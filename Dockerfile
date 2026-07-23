@@ -1,18 +1,25 @@
-FROM php:8.4-cli-alpine
+FROM php:8.3-cli-alpine
 
-RUN apk add --no-linux-headers --no-cache $PHPIZE_DEPS sqlite-dev icu-dev zip libzip-dev \
-    && docker-php-ext-install pdo pdo_sqlite intl zip
+# Install system dependencies & SQLite extension headers
+RUN apk add --no-cache \
+    sqlite-dev \
+    libcurl \
+    curl-dev \
+    icu-dev \
+    oniguruma-dev
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Install required PHP extensions
+RUN docker-php-ext-install pdo pdo_sqlite pdo_mysql opcache curl
 
-WORKDIR /var/www/html
+# Set working directory
+WORKDIR /app
 
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --prefer-dist --no-autoloader
-
+# Copy application files
 COPY . .
-RUN composer dump-autoload --optimize
 
+# Expose HTTP port for Web Service
 EXPOSE 8000
 
+# Default command (overridden by render.yaml for worker)
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+
