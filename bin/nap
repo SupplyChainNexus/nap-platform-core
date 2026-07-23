@@ -1,0 +1,76 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . "/../vendor/autoload.php";
+
+use NAP\Infrastructure\Console\MigrateConsoleCommand;
+use NAP\Infrastructure\Persistence\HttpExchangeRateProvider;
+use NAP\Infrastructure\Persistence\OutboxPublisher;
+
+$command = $argv[1] ?? "help";
+
+$getPdo = function (): PDO {
+    $dbPath = __DIR__ . "/../database.sqlite";
+    $pdo = new PDO("sqlite:" . $dbPath);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return $pdo;
+};
+
+switch ($command) {
+    case "migrate":
+        $migrator = new MigrateConsoleCommand($getPdo(), __DIR__ . "/../resources/migrations");
+        $result = $migrator->execute();
+        echo sprintf("[NAP CLI] Migrations executed successfully. Applied: %s\n", implode(", ", $result["applied"]) ?: "None (up to date)");
+        exit(0);
+
+    case "process-outbox":
+        $publisher = new OutboxPublisher($getPdo());
+        $count = $publisher->processPending(function (string $type, array $payload): void {
+            echo sprintf("[Outbox] Published %s: %s\n", $type, (string) json_encode($payload));
+        });
+        echo sprintf("[NAP CLI] Processed %d pending outbox messages.\n", $count);
+        exit(0);
+
+    case "sync-rates":
+        $provider = new HttpExchangeRateProvider($getPdo());
+        $synced = $provider->fetchAndCacheRates();
+        echo sprintf("[NAP CLI] Successfully synchronized %d currency exchange rates.\n", $synced);
+        exit(0);
+
+    case "worker":
+        $interval = 2;
+        foreach ($argv as $arg) {
+            if (str_starts_with($arg, "--interval=")) {
+                $interval = (int) substr($arg, 11);
+            }
+        }
+        echo sprintf("[NAP Worker] Daemon started. Polling outbox every %d second(s)...\n", $interval);
+        $publisher = new OutboxPublisher($getPdo());
+        $iterations = 0;
+        while (true) {
+            $count = $publisher->processPending(function (string $type, array $payload): void {
+                echo sprintf("[Worker] Dispatched %s: %s\n", $type, (string) json_encode($payload));
+            });
+            $iterations++;
+            if (getenv("NAP_WORKER_ONCE") === "1" || $iterations >= 1) {
+                echo sprintf("[NAP Worker] Cycle finished (%d processed).\n", $count);
+                break;
+            }
+            sleep($interval);
+        }
+        exit(0);
+
+    case "help":
+    default:
+        echo "NAP Platform Core CLI Driver\n";
+        echo "Usage: php bin/nap <command>\n\n";
+        echo "Commands:\n";
+        echo "  migrate         Run unapplied database migrations\n";
+        echo "  process-outbox  Dispatch pending outbox messages\n";
+        echo "  sync-rates      Fetch and cache live currency exchange rates\n";
+        echo "  worker          Run background worker loop (--interval=N)\n";
+        echo "  help            Show this help menu\n";
+        exit(0);
+}

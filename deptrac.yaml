@@ -1,0 +1,38 @@
+deptrac:
+  paths:
+    - src
+  layers:
+    - name: SharedKernel
+      collectors:
+        - type: directory
+          value: src/SharedKernel/.*
+    - name: Domain
+      collectors:
+        - type: directory
+          value: src/Domain/.*
+    - name: Application
+      collectors:
+        - type: directory
+          value: src/Application/.*
+    - name: Infrastructure
+      collectors:
+        - type: directory
+          value: src/Infrastructure/.*
+    - name: Presentation
+      collectors:
+        - type: directory
+          value: src/Presentation/.*
+
+  ruleset:
+    Presentation:
+      - Application
+      - SharedKernel
+    Application:
+      - Domain
+      - SharedKernel
+    Domain:
+      - SharedKernel
+    Infrastructure:
+      - Domain
+      - SharedKernel
+    SharedKernel: []

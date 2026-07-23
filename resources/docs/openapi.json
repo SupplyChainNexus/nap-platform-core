@@ -1,0 +1,159 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "NAP Platform Core API",
+        "version": "1.0.0",
+        "description": "Core domain and AI-assisted pricing intelligence services for NAP Platform."
+    },
+    "paths": {
+        "/api/cases": {
+            "post": {
+                "summary": "Create a new Procurement/Audit Case",
+                "operationId": "createCase",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "businessContext"
+                                ],
+                                "properties": {
+                                    "businessContext": {
+                                        "type": "string",
+                                        "example": "Fleet Equipment Procurement"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Case created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "case_id": {
+                                            "type": "string",
+                                            "example": "018e38f9-472b-7b33-8a30-89196b0521e1"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/pricing/analyze": {
+            "post": {
+                "summary": "Analyze part pricing using AI intelligence & auto-currency conversion",
+                "operationId": "analyzePricing",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "partNumber",
+                                    "amountInCents"
+                                ],
+                                "properties": {
+                                    "partNumber": {
+                                        "type": "string",
+                                        "example": "PART-900"
+                                    },
+                                    "amountInCents": {
+                                        "type": "integer",
+                                        "example": 12000
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "example": "USD"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pricing analysis generated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "part_number": {
+                                                    "type": "string"
+                                                },
+                                                "recommended_price_cents": {
+                                                    "type": "integer"
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "example": "ZAR"
+                                                },
+                                                "confidence": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "reasoning": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Payload"
+                    },
+                    "422": {
+                        "description": "Domain Processing Error"
+                    }
+                }
+            }
+        }
+    }
+}

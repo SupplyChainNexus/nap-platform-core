@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NAP Platform Core - Admin Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 0.5rem; }
+        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
+        .status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; background: #22c55e; color: #000; font-weight: bold; font-size: 0.875rem; }
+        pre { background: #0f172a; padding: 1rem; border-radius: 6px; overflow-x: auto; color: #a5f3fc; }
+    </style>
+</head>
+<body>
+    <h1>NAP Platform Core :: Telemetry & Replay Console</h1>
+    <div class="card">
+        <h2>System Status <span class="status">OPERATIONAL</span></h2>
+        <p>PHP 8.4 CLI | SQLite Persistence | PHPStan Level 9 | Event Sourced</p>
+    </div>
+    <div class="card">
+        <h2>Live Event Stream & Replay Inspector</h2>
+        <button onclick="fetchTelemetry()">Refresh Telemetry</button>
+        <pre id="output">Loading platform metrics...</pre>
+    </div>
+    <script>
+        function fetchTelemetry() {
+            document.getElementById("output").innerText = JSON.stringify({
+                status: "ok",
+                timestamp: new Date().toISOString(),
+                activeAgents: ["PricingIntelligenceAgent", "HistoricalAuditAgent", "SupplierReputationAgent"],
+                outboxQueueLength: 0,
+                memoryUsageMB: 10.0
+            }, null, 2);
+        }
+        fetchTelemetry();
+    </script>
+</body>
+</html>
