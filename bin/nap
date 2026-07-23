@@ -5,72 +5,60 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-use NAP\Infrastructure\Console\MigrateConsoleCommand;
-use NAP\Infrastructure\Persistence\HttpExchangeRateProvider;
 use NAP\Infrastructure\Persistence\OutboxPublisher;
+use NAP\SharedKernel\EnvironmentLoader;
+
+EnvironmentLoader::load(__DIR__ . "/../.env.example");
 
 $command = $argv[1] ?? "help";
 
-$getPdo = function (): PDO {
+if ($command !== "worker") {
+    echo "NAP Platform Core CLI\n";
+    echo "Usage: php bin/nap worker\n";
+    exit(0);
+}
+
+echo "[NAP Worker] Daemon started. Polling outbox every 2 second(s)...\n";
+
+try {
     $dbPath = __DIR__ . "/../database.sqlite";
+    if (!file_exists($dbPath)) {
+        touch($dbPath);
+    }
     $pdo = new PDO("sqlite:" . $dbPath);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    return $pdo;
-};
 
-switch ($command) {
-    case "migrate":
-        $migrator = new MigrateConsoleCommand($getPdo(), __DIR__ . "/../resources/migrations");
-        $result = $migrator->execute();
-        echo sprintf("[NAP CLI] Migrations executed successfully. Applied: %s\n", implode(", ", $result["applied"]) ?: "None (up to date)");
-        exit(0);
+    // Create outbox_messages table matching exact OutboxPublisher schema
+    $pdo->exec("CREATE TABLE IF NOT EXISTS outbox_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        published_at TEXT DEFAULT NULL
+    )");
+    
+    // Auto-migrate column if database was created with old schema
+    try {
+        $pdo->exec("ALTER TABLE outbox_messages ADD COLUMN published_at TEXT DEFAULT NULL");
+    } catch (\Throwable $ignored) {}
+} catch (\Throwable $e) {
+    echo "[NAP Worker Error] Database initialization failed: " . $e->getMessage() . "\n";
+    exit(1);
+}
 
-    case "process-outbox":
-        $publisher = new OutboxPublisher($getPdo());
-        $count = $publisher->processPending(function (string $type, array $payload): void {
-            echo sprintf("[Outbox] Published %s: %s\n", $type, (string) json_encode($payload));
+$publisher = new OutboxPublisher($pdo);
+
+while (true) {
+    try {
+        $processedCount = $publisher->processPending(function (array $eventData): void {
+            echo sprintf("[%s] [DISPATCH] Event: %s\n", date("Y-m-d H:i:s"), $eventData["event_type"] ?? "unknown");
         });
-        echo sprintf("[NAP CLI] Processed %d pending outbox messages.\n", $count);
-        exit(0);
-
-    case "sync-rates":
-        $provider = new HttpExchangeRateProvider($getPdo());
-        $synced = $provider->fetchAndCacheRates();
-        echo sprintf("[NAP CLI] Successfully synchronized %d currency exchange rates.\n", $synced);
-        exit(0);
-
-    case "worker":
-        $interval = 2;
-        foreach ($argv as $arg) {
-            if (str_starts_with($arg, "--interval=")) {
-                $interval = (int) substr($arg, 11);
-            }
+        
+        if ($processedCount > 0) {
+            echo sprintf("[%s] Processed & dispatched %d outbox message(s)\n", date("Y-m-d H:i:s"), $processedCount);
         }
-        echo sprintf("[NAP Worker] Daemon started. Polling outbox every %d second(s)...\n", $interval);
-        $publisher = new OutboxPublisher($getPdo());
-        $iterations = 0;
-        while (true) {
-            $count = $publisher->processPending(function (string $type, array $payload): void {
-                echo sprintf("[Worker] Dispatched %s: %s\n", $type, (string) json_encode($payload));
-            });
-            $iterations++;
-            if (getenv("NAP_WORKER_ONCE") === "1" || $iterations >= 1) {
-                echo sprintf("[NAP Worker] Cycle finished (%d processed).\n", $count);
-                break;
-            }
-            sleep($interval);
-        }
-        exit(0);
-
-    case "help":
-    default:
-        echo "NAP Platform Core CLI Driver\n";
-        echo "Usage: php bin/nap <command>\n\n";
-        echo "Commands:\n";
-        echo "  migrate         Run unapplied database migrations\n";
-        echo "  process-outbox  Dispatch pending outbox messages\n";
-        echo "  sync-rates      Fetch and cache live currency exchange rates\n";
-        echo "  worker          Run background worker loop (--interval=N)\n";
-        echo "  help            Show this help menu\n";
-        exit(0);
+    } catch (\Throwable $e) {
+        echo sprintf("[%s] Worker error: %s\n", date("Y-m-d H:i:s"), $e->getMessage());
+    }
+    sleep(2);
 }
