@@ -3,3 +3,4 @@ vendor/
 database.sqlite
 .phpunit.cache/
 .phpstan.cache/
+*.exe
