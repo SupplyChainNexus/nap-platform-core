@@ -1,0 +1,5 @@
+vendor/
+.env
+database.sqlite
+.phpunit.cache/
+.phpstan.cache/
