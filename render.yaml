@@ -8,8 +8,7 @@ services:
     dockerfilePath: Dockerfile
     plan: starter
     region: oregon
-    buildCommand: ""
-    startCommand: php -d extension=pdo_sqlite -S 0.0.0.0:8000 -t public
+    dockerCommand: php -d extension=pdo_sqlite -S 0.0.0.0:8000 -t public
     envVars:
       - key: APP_ENV
         value: production
@@ -31,8 +30,7 @@ services:
     dockerfilePath: Dockerfile
     plan: starter
     region: oregon
-    buildCommand: ""
-    startCommand: php -d extension=pdo_sqlite bin/nap worker
+    dockerCommand: php -d extension=pdo_sqlite bin/nap worker
     envVars:
       - key: APP_ENV
         value: production
