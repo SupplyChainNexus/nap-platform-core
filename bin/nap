@@ -13,7 +13,7 @@ EnvironmentLoader::load(__DIR__ . "/../.env.example");
 $command = $argv[1] ?? "help";
 
 if ($command !== "worker") {
-    echo "NAP Platform Core CLI\n";
+    echo "NAP Platform Core CLI Driver\n";
     echo "Usage: php bin/nap worker\n";
     exit(0);
 }
