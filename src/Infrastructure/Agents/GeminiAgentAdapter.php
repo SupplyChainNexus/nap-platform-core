@@ -51,11 +51,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key=" . urlencode($this->apiKey);
 
         $lastErrorMessage = "No response from Gemini API";
-        $attempts = 2;
+        $attempts = 2; // Auto-retry transient load errors
 
         for ($i = 0; $i < $attempts; $i++) {
             if ($i > 0) {
-                usleep(500000);
+                usleep(500000); // Wait 0.5s before retry
             }
 
             $ch = @curl_init($url);
