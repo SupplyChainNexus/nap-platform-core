@@ -29,12 +29,8 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
         }
 
-        // Target current active production models
-        $candidateModels = array_unique([
-            $this->model,
-            "gemini-2.5-flash",
-            "gemini-2.0-flash"
-        ]);
+        $cleanModel = str_starts_with($this->model, "models/") ? substr($this->model, 7) : $this->model;
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
 
         $promptText = "Analyze this procurement payload for context template {$context->templateName} with variables: " 
             . json_encode($context->variables) 
@@ -49,12 +45,7 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        $lastError = "Unknown error";
-
-        foreach ($candidateModels as $candidate) {
-            $cleanModel = str_starts_with($candidate, "models/") ? substr($candidate, 7) : $candidate;
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
-
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
             $ch = @curl_init($url);
             if ($ch === false) {
                 continue;
@@ -66,7 +57,7 @@ final class GeminiAgentAdapter implements LlmProviderInterface
                 "Content-Type: application/json"
             ]);
             curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
 
             $response = @curl_exec($ch);
             $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -85,10 +76,12 @@ final class GeminiAgentAdapter implements LlmProviderInterface
                 }
             }
 
-            $lastError = "Gemini API HTTP Error {$httpCode}";
+            if ($httpCode === 429) {
+                sleep(3);
+            }
         }
 
-        return $this->fallbackResponse($context, $lastError);
+        return $this->fallbackResponse($context, "Gemini API HTTP Error " . ($httpCode ?? 0));
     }
 
     /**
