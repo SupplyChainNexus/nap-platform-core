@@ -42,18 +42,16 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        // Active production models for Tier 1 billing
-        $modelsToTry = array_unique([
-            $this->model,
-            "gemini-2.5-flash",
-            "gemini-3.5-flash"
-        ]);
+        $cleanModel = str_replace("models/", "", $this->model);
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
 
         $lastErrorMessage = "No response from Gemini API";
+        $attempts = 2; // Retry on 503 high demand spikes
 
-        foreach ($modelsToTry as $candidate) {
-            $cleanModel = str_replace("models/", "", $candidate);
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
+        for ($i = 0; $i < $attempts; $i++) {
+            if ($i > 0) {
+                usleep(500000); // Wait 0.5s before retry
+            }
 
             $ch = @curl_init($url);
             if ($ch === false) {
