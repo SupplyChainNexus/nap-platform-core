@@ -12,11 +12,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     private string $apiKey;
     private string $model;
 
-    public function __construct(string $apiKey = "", string $model = "gemini-1.5-flash")
+    public function __construct(string $apiKey = "", string $model = "gemini-2.5-flash")
     {
         $this->apiKey = trim($apiKey);
         $clean = str_replace("models/", "", trim($model));
-        $this->model = !empty($clean) ? $clean : "gemini-1.5-flash";
+        $this->model = !empty($clean) ? $clean : "gemini-2.5-flash";
     }
 
     /**
@@ -49,8 +49,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
 
         $modelsToTry = array_values(array_unique([
             $this->model,
+            "gemini-2.5-flash",
             "gemini-1.5-flash",
-            "gemini-1.5-pro"
+            "gemini-2.0-flash"
         ]));
 
         $lastError = "No response from API";
@@ -126,7 +127,7 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         $rawBase = $context->variables["normalizedAmount"] ?? 85000;
         $base = is_numeric($rawBase) ? (float) $rawBase : 85000.0;
         $rawPart = $context->variables["partNumber"] ?? "NAP-SERIES-900";
-        $part = is_string($rawPart) ? $part : "NAP-SERIES-900";
+        $part = is_string($rawPart) ? $rawPart : "NAP-SERIES-900";
 
         return [
             "recommendedAmount" => (int) round($base * 0.92),
