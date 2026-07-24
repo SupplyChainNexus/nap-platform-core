@@ -12,10 +12,10 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     private string $apiKey;
     private string $model;
 
-    public function __construct(string $apiKey = "", string $model = "gemini-2.0-flash")
+    public function __construct(string $apiKey = "", string $model = "gemini-1.5-flash")
     {
         $this->apiKey = trim($apiKey);
-        $this->model = !empty($model) ? $model : "gemini-2.0-flash";
+        $this->model = !empty($model) ? $model : "gemini-1.5-flash";
     }
 
     /**
@@ -42,11 +42,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
+        // Standard Generally Available production Gemini models
         $modelsToTry = array_unique([
             $this->model,
-            "gemini-2.0-flash",
             "gemini-1.5-flash",
-            "gemini-2.5-flash"
+            "gemini-1.5-pro"
         ]);
 
         $lastErrorMessage = "No response from Gemini API";
