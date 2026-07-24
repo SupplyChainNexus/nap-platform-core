@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+ini_set("display_errors", "0");
+
 require_once __DIR__ . "/../vendor/autoload.php";
 
 use NAP\Application\Intelligence\Agents\PricingIntelligenceAgent;
@@ -18,7 +21,6 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 
 $uri = parse_url($_SERVER["REQUEST_URI"] ?? "/", PHP_URL_PATH);
 
-// Public Admin & Telemetry routes
 if ($uri === "/admin.html" || $uri === "/admin") {
     if (file_exists(__DIR__ . "/admin.html")) {
         header("Content-Type: text/html");
@@ -43,7 +45,6 @@ if ($uri === "/api/v1/telemetry") {
     exit;
 }
 
-// Authenticated API Routes
 $headers = getallheaders();
 $authHeader = $headers["Authorization"] ?? $headers["authorization"] ?? "";
 
@@ -65,7 +66,7 @@ if ($uri === "/api/v1/analyze-pricing" && $_SERVER["REQUEST_METHOD"] === "POST")
     $data = json_decode($rawInput ?: "{}", true);
 
     $geminiKey = getenv("GEMINI_API_KEY") ?: "";
-    $adapter = new GeminiAgentAdapter(apiKey: $geminiKey);
+    $adapter = new GeminiAgentAdapter(apiKey: $geminiKey, model: "gemini-1.5-flash");
     $agent = new PricingIntelligenceAgent($adapter);
 
     $amount = (float) ($data["amount"] ?? 10000);
