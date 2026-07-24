@@ -2,37 +2,189 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NAP Platform Core - Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAP Platform Core :: Intelligent Procurement Console</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
-        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 0.5rem; }
-        .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
-        .status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; background: #22c55e; color: #000; font-weight: bold; font-size: 0.875rem; }
-        pre { background: #0f172a; padding: 1rem; border-radius: 6px; overflow-x: auto; color: #a5f3fc; }
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #111827;
+            --border-color: #1f2937;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            color: #60a5fa;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.75rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background-color: #064e3b;
+            color: var(--accent-green);
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.25rem;
+            background: #1f2937;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            margin-top: 1.5rem;
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        pre {
+            background: #030712;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            color: #34d399;
+            font-size: 0.85rem;
+            border: 1px solid #1f2937;
+            min-height: 220px;
+        }
     </style>
 </head>
 <body>
-    <h1>NAP Platform Core :: Telemetry & Replay Console</h1>
-    <div class="card">
-        <h2>System Status <span class="status">OPERATIONAL</span></h2>
-        <p>PHP 8.4 CLI | SQLite Persistence | PHPStan Level 9 | Event Sourced</p>
+    <div class="container">
+        <header>
+            <h1>NAP Platform Core :: Intelligent Procurement Console</h1>
+            <p style="color: var(--text-muted); margin:0;">
+                Powered by PHP 8.3 CLI | Multi-Agent LLM Engine | Event-Sourced Architecture
+            </p>
+        </header>
+
+        <div class="grid">
+            <!-- Left: PO Submission Form -->
+            <div class="card">
+                <h3>Submit Purchase Order Evaluation <span class="badge">GEMINI 2.5 ACTIVE</span></h3>
+                <form id="poForm">
+                    <label>Part Number / Item</label>
+                    <input type="text" id="partNumber" value="NAP-SERIES-900" required>
+
+                    <label>Base Amount (ZAR)</label>
+                    <input type="number" id="amount" value="85000" required>
+
+                    <label>Target Supplier ID</label>
+                    <input type="text" id="supplierId" value="SUPPLIER-ZA-04" required>
+
+                    <button type="submit" id="submitBtn">Evaluate via Gemini AI Agent</button>
+                </form>
+            </div>
+
+            <!-- Right: AI Decision Output -->
+            <div class="card">
+                <h3>AI Recommendation & Telemetry</h3>
+                <div id="loading" style="display:none; color:#f59e0b; margin-bottom:1rem;">
+                    ? Running multi-agent pricing evaluation...
+                </div>
+                <pre id="output">{
+  "status": "ready",
+  "message": "Submit a purchase order to trigger real-time AI negotiation & evaluation."
+}</pre>
+            </div>
+        </div>
     </div>
-    <div class="card">
-        <h2>Live Event Stream & Replay Inspector</h2>
-        <button onclick="fetchTelemetry()">Refresh Telemetry</button>
-        <pre id="output">Loading platform metrics...</pre>
-    </div>
+
     <script>
-        function fetchTelemetry() {
-            document.getElementById("output").innerText = JSON.stringify({
-                status: "ok",
-                timestamp: new Date().toISOString(),
-                activeAgents: ["PricingIntelligenceAgent", "HistoricalAuditAgent", "SupplierReputationAgent"],
-                outboxQueueLength: 0,
-                memoryUsageMB: 10.0
-            }, null, 2);
-        }
-        fetchTelemetry();
+        document.getElementById("poForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById("submitBtn");
+            const loading = document.getElementById("loading");
+            const output = document.getElementById("output");
+
+            btn.disabled = true;
+            loading.style.display = "block";
+            output.textContent = "Processing...";
+
+            const payload = {
+                partNumber: document.getElementById("partNumber").value,
+                amount: parseFloat(document.getElementById("amount").value),
+                supplierId: document.getElementById("supplierId").value,
+                currency: "ZAR"
+            };
+
+            try {
+                const response = await fetch("/api/v1/analyze-pricing", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = JSON.stringify({ error: err.message }, null, 2);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = "none";
+            }
+        });
     </script>
 </body>
 </html>
