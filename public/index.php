@@ -2,88 +2,60 @@
 
 declare(strict_types=1);
 
-error_reporting(0);
-ini_set("display_errors", "0");
+require_once __DIR__ . '/../vendor/autoload.php';
 
-require_once __DIR__ . "/../vendor/autoload.php";
-
-use NAP\Application\Intelligence\Agents\Pricing\PricingIntelligenceAgent;
+use NAP\Application\Intelligence\Prompting\PromptContext;
 use NAP\Infrastructure\Agents\GeminiAgentAdapter;
 
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header('Content-Type: application/json');
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
+// 1. Read and parse incoming HTTP JSON payload
+$rawInput = file_get_contents('php://input');
+$requestData = json_decode((string) $rawInput, true) ?? [];
 
-$uri = parse_url($_SERVER["REQUEST_URI"] ?? "/", PHP_URL_PATH);
+// 2. Fall back to POST parameters if JSON body is empty
+$partNumber = !empty($requestData['partNumber']) 
+    ? trim((string) $requestData['partNumber']) 
+    : trim((string) ($_POST['partNumber'] ?? 'NAP-SERIES-900'));
 
+$rawAmount = $requestData['normalizedAmount'] ?? ($_POST['normalizedAmount'] ?? 85000.0);
+$normalizedAmount = is_numeric($rawAmount) ? (float) $rawAmount : 85000.0;
+
+$supplierId = !empty($requestData['supplierId']) 
+    ? trim((string) $requestData['supplierId']) 
+    : 'SUPPLIER-001';
+
+// 3. Construct PromptContext with real, dynamic user variables
+$context = new PromptContext('procurement_evaluation', [
+    'partNumber' => $partNumber,
+    'normalizedAmount' => $normalizedAmount,
+    'supplierId' => $supplierId
+]);
+
+// 4. Instantiate Adapter with Environment Configuration
+$apiKey = getenv('GEMINI_API_KEY') ?: '';
+$model = getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash';
+
+$agent = new GeminiAgentAdapter($apiKey, $model);
+
+// 5. Execute AI Recommendation
 try {
-    if ($uri === "/admin.html" || $uri === "/admin") {
-        if (file_exists(__DIR__ . "/admin.html")) {
-            header("Content-Type: text/html");
-            echo file_get_contents(__DIR__ . "/admin.html");
-            exit;
-        }
-    }
+    $evaluation = $agent->generateStructuredOutput($context);
 
-    if ($uri === "/api/v1/telemetry") {
-        header("Content-Type: application/json");
-        echo json_encode([
-            "status" => "ok",
-            "timestamp" => date("c"),
-            "activeAgents" => [
-                "PricingIntelligenceAgent",
-                "HistoricalAuditAgent",
-                "SupplierReputationAgent"
-            ],
-            "outboxQueueLength" => 0,
-            "memoryUsageMB" => round(memory_get_usage() / 1024 / 1024, 2)
-        ]);
-        exit;
-    }
+    // Merge evaluated part number back into response telemetry for audit matching
+    $evaluation['partNumber'] = $partNumber;
+    $evaluation['originalAmount'] = (int) $normalizedAmount;
+    $evaluation['currency'] = 'ZAR';
 
-    if ($uri === "/api/v1/analyze-pricing" && $_SERVER["REQUEST_METHOD"] === "POST") {
-        header("Content-Type: application/json");
-        
-        $rawInput = file_get_contents("php://input");
-        /** @var array{partNumber?: string, amount?: float|int, supplierId?: string, currency?: string} $data */
-        $data = json_decode($rawInput ?: "{}", true);
-
-        $geminiKey = getenv("GEMINI_API_KEY") ?: "";
-        $adapter = new GeminiAgentAdapter(apiKey: $geminiKey, model: "gemini-1.5-flash");
-        $agent = new PricingIntelligenceAgent($adapter);
-
-        $amount = (float) ($data["amount"] ?? 10000);
-        $evaluation = $agent->evaluate(["normalizedAmount" => $amount]);
-
-        echo json_encode([
-            "status" => "success",
-            "timestamp" => date("c"),
-            "evaluation" => [
-                "partNumber" => $data["partNumber"] ?? "NAP-UNKNOWN",
-                "originalAmount" => $amount,
-                "recommendedAmount" => $evaluation["recommendedAmount"],
-                "confidence" => $evaluation["confidence"],
-                "reasons" => $evaluation["reasons"],
-                "currency" => $data["currency"] ?? "ZAR"
-            ]
-        ]);
-        exit;
-    }
-
-    http_response_code(404);
-    header("Content-Type: application/json");
-    echo json_encode(["status" => "error", "error" => "Route not found"]);
+    echo json_encode([
+        'status' => 'success',
+        'timestamp' => date('c'),
+        'evaluation' => $evaluation
+    ], JSON_PRETTY_PRINT);
 } catch (\Throwable $e) {
     http_response_code(500);
-    header("Content-Type: application/json");
     echo json_encode([
-        "status" => "error",
-        "error" => "Server Error: " . $e->getMessage()
-    ]);
+        'status' => 'error',
+        'message' => $e->getMessage()
+    ], JSON_PRETTY_PRINT);
 }
-
