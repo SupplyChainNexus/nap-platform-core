@@ -7,7 +7,7 @@ ini_set("display_errors", "0");
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-use NAP\Application\Intelligence\Agents\PricingIntelligenceAgent;
+use NAP\Application\Intelligence\Agents\Pricing\PricingIntelligenceAgent;
 use NAP\Infrastructure\Agents\GeminiAgentAdapter;
 
 header("Access-Control-Allow-Origin: *");
@@ -22,7 +22,6 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 $uri = parse_url($_SERVER["REQUEST_URI"] ?? "/", PHP_URL_PATH);
 
 try {
-    // Public Console Page
     if ($uri === "/admin.html" || $uri === "/admin") {
         if (file_exists(__DIR__ . "/admin.html")) {
             header("Content-Type: text/html");
@@ -31,7 +30,6 @@ try {
         }
     }
 
-    // Public Telemetry Endpoint
     if ($uri === "/api/v1/telemetry") {
         header("Content-Type: application/json");
         echo json_encode([
@@ -48,7 +46,6 @@ try {
         exit;
     }
 
-    // Pricing Evaluation Endpoint
     if ($uri === "/api/v1/analyze-pricing" && $_SERVER["REQUEST_METHOD"] === "POST") {
         header("Content-Type: application/json");
         
