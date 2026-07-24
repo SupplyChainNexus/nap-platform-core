@@ -12,8 +12,6 @@
             --text-main: #f9fafb;
             --text-muted: #9ca3af;
             --accent-green: #10b981;
-            --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
         }
 
         body {
@@ -71,7 +69,7 @@
             font-size: 0.875rem;
         }
 
-        input, select {
+        input {
             width: 100%;
             padding: 0.75rem;
             margin-top: 0.25rem;
@@ -121,9 +119,8 @@
         </header>
 
         <div class="grid">
-            <!-- Left: PO Submission Form -->
             <div class="card">
-                <h3>Submit Purchase Order Evaluation <span class="badge">GEMINI 2.5 ACTIVE</span></h3>
+                <h3>Submit Purchase Order Evaluation <span class="badge">GEMINI ACTIVE</span></h3>
                 <form id="poForm">
                     <label>Part Number / Item</label>
                     <input type="text" id="partNumber" value="NAP-SERIES-900" required>
@@ -138,7 +135,6 @@
                 </form>
             </div>
 
-            <!-- Right: AI Decision Output -->
             <div class="card">
                 <h3>AI Recommendation & Telemetry</h3>
                 <div id="loading" style="display:none; color:#f59e0b; margin-bottom:1rem;">
@@ -173,7 +169,10 @@
             try {
                 const response = await fetch("/api/v1/analyze-pricing", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer dev-token-nap-core-2026"
+                    },
                     body: JSON.stringify(payload)
                 });
                 const data = await response.json();
