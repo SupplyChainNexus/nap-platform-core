@@ -12,10 +12,10 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     private string $apiKey;
     private string $model;
 
-    public function __construct(string $apiKey = "", string $model = "gemini-2.5-flash")
+    public function __construct(string $apiKey = "", string $model = "gemini-1.5-flash")
     {
         $this->apiKey = trim($apiKey);
-        $this->model = !empty($model) ? $model : "gemini-2.5-flash";
+        $this->model = !empty($model) ? $model : "gemini-1.5-flash";
     }
 
     /**
@@ -29,8 +29,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
         }
 
-        $cleanModel = str_starts_with($this->model, "models/") ? substr($this->model, 7) : $this->model;
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
+        $activeModel = $this->discoverActiveModel();
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/{$activeModel}:generateContent?key=" . urlencode($this->apiKey);
 
         $promptText = "Analyze this procurement payload for context template {$context->templateName} with variables: " 
             . json_encode($context->variables) 
@@ -45,28 +46,35 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        for ($attempt = 1; $attempt <= 2; $attempt++) {
-            $ch = @curl_init($url);
-            if ($ch === false) {
-                continue;
-            }
+        $ch = @curl_init($url);
+        if ($ch === false) {
+            return $this->fallbackResponse($context, "Unable to initialize cURL");
+        }
 
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Content-Type: application/json"
-            ]);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
-            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json"
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
 
-            $response = @curl_exec($ch);
-            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            @curl_close($ch);
+        $response = @curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        @curl_close($ch);
 
-            if ($response !== false && $httpCode === 200) {
-                /** @var array{candidates?: array<int, array{content?: array{parts?: array<int, array{text?: string}>}}>} $decoded */
-                $decoded = json_decode((string) $response, true);
-                $rawText = $decoded["candidates"][0]["content"]["parts"][0]["text"] ?? "";
+        if ($response !== false && $httpCode === 200) {
+            /** @var array<string, mixed>|null $decoded */
+            $decoded = json_decode((string) $response, true);
+            
+            if (is_array($decoded) && isset($decoded["candidates"]) && is_array($decoded["candidates"])) {
+                /** @var array<string, mixed> $firstCandidate */
+                $firstCandidate = $decoded["candidates"][0] ?? [];
+                /** @var array<string, mixed> $content */
+                $content = $firstCandidate["content"] ?? [];
+                /** @var array<int, array<string, mixed>> $parts */
+                $parts = $content["parts"] ?? [];
+                $rawText = is_string($parts[0]["text"] ?? null) ? $parts[0]["text"] : "";
 
                 /** @var array<string, mixed>|null $data */
                 $data = json_decode($rawText, true);
@@ -75,13 +83,50 @@ final class GeminiAgentAdapter implements LlmProviderInterface
                     return $data;
                 }
             }
+        }
 
-            if ($httpCode === 429) {
-                sleep(3);
+        return $this->fallbackResponse($context, "Gemini API HTTP Error {$httpCode} on model {$activeModel}");
+    }
+
+    /**
+     * Query Google API for active generateContent models
+     */
+    private function discoverActiveModel(): string
+    {
+        $listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" . urlencode($this->apiKey);
+        
+        $ch = @curl_init($listUrl);
+        if ($ch === false) {
+            return "models/gemini-1.5-flash";
+        }
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+
+        $response = @curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        @curl_close($ch);
+
+        if ($response !== false && $httpCode === 200) {
+            /** @var array<string, mixed>|null $decoded */
+            $decoded = json_decode((string) $response, true);
+
+            if (is_array($decoded) && isset($decoded["models"]) && is_array($decoded["models"])) {
+                /** @var array<int, array<string, mixed>> $modelList */
+                $modelList = $decoded["models"];
+
+                foreach ($modelList as $m) {
+                    $methods = is_array($m["supportedGenerationMethods"] ?? null) ? $m["supportedGenerationMethods"] : [];
+                    $name = is_string($m["name"] ?? null) ? $m["name"] : "";
+
+                    if ($name !== "" && in_array("generateContent", $methods, true)) {
+                        return $name;
+                    }
+                }
             }
         }
 
-        return $this->fallbackResponse($context, "Gemini API HTTP Error " . ($httpCode ?? 0));
+        return str_starts_with($this->model, "models/") ? $this->model : "models/" . $this->model;
     }
 
     /**
