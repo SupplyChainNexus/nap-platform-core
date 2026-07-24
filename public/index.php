@@ -7,55 +7,53 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use NAP\Application\Intelligence\Prompting\PromptContext;
 use NAP\Infrastructure\Agents\GeminiAgentAdapter;
 
-header('Content-Type: application/json');
+// Route API requests cleanly
+$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
-// 1. Read and parse incoming HTTP JSON payload
-$rawInput = file_get_contents('php://input');
-$requestData = json_decode((string) $rawInput, true) ?? [];
+if ($uri === '/api/evaluate') {
+    header('Content-Type: application/json');
 
-// 2. Fall back to POST parameters if JSON body is empty
-$partNumber = !empty($requestData['partNumber']) 
-    ? trim((string) $requestData['partNumber']) 
-    : trim((string) ($_POST['partNumber'] ?? 'NAP-SERIES-900'));
+    try {
+        $rawInput = file_get_contents('php://input');
+        $data = json_decode((string) $rawInput, true) ?? [];
 
-$rawAmount = $requestData['normalizedAmount'] ?? ($_POST['normalizedAmount'] ?? 85000.0);
-$normalizedAmount = is_numeric($rawAmount) ? (float) $rawAmount : 85000.0;
+        $partNumber = !empty($data['partNumber']) ? trim((string) $data['partNumber']) : 'NAP-SERIES-900';
+        $normalizedAmount = isset($data['normalizedAmount']) ? (float) $data['normalizedAmount'] : 85000.0;
+        $supplierId = !empty($data['supplierId']) ? trim((string) $data['supplierId']) : 'SUPPLIER-001';
 
-$supplierId = !empty($requestData['supplierId']) 
-    ? trim((string) $requestData['supplierId']) 
-    : 'SUPPLIER-001';
+        $context = new PromptContext('procurement_evaluation', [
+            'partNumber' => $partNumber,
+            'normalizedAmount' => $normalizedAmount,
+            'supplierId' => $supplierId
+        ]);
 
-// 3. Construct PromptContext with real, dynamic user variables
-$context = new PromptContext('procurement_evaluation', [
-    'partNumber' => $partNumber,
-    'normalizedAmount' => $normalizedAmount,
-    'supplierId' => $supplierId
-]);
+        $apiKey = getenv('GEMINI_API_KEY') ?: '';
+        $model = getenv('GEMINI_MODEL') ?: 'gemini-2.5-flash';
 
-// 4. Instantiate Adapter with Environment Configuration
-$apiKey = getenv('GEMINI_API_KEY') ?: '';
-$model = getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash';
+        $agent = new GeminiAgentAdapter($apiKey, $model);
+        $evaluation = $agent->generateStructuredOutput($context);
 
-$agent = new GeminiAgentAdapter($apiKey, $model);
+        $evaluation['partNumber'] = $partNumber;
+        $evaluation['originalAmount'] = (int) $normalizedAmount;
+        $evaluation['currency'] = 'ZAR';
 
-// 5. Execute AI Recommendation
-try {
-    $evaluation = $agent->generateStructuredOutput($context);
+        echo json_encode([
+            'status' => 'success',
+            'timestamp' => date('c'),
+            'evaluation' => $evaluation
+        ], JSON_PRETTY_PRINT);
+    } catch (\Throwable $e) {
+        http_response_code(200); // Return valid JSON on errors to prevent UI crashes
+        echo json_encode([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], JSON_PRETTY_PRINT);
+    }
+    exit;
+}
 
-    // Merge evaluated part number back into response telemetry for audit matching
-    $evaluation['partNumber'] = $partNumber;
-    $evaluation['originalAmount'] = (int) $normalizedAmount;
-    $evaluation['currency'] = 'ZAR';
-
-    echo json_encode([
-        'status' => 'success',
-        'timestamp' => date('c'),
-        'evaluation' => $evaluation
-    ], JSON_PRETTY_PRINT);
-} catch (\Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        'status' => 'error',
-        'message' => $e->getMessage()
-    ], JSON_PRETTY_PRINT);
+// Serve static UI if requested directly
+if ($uri === '/admin.html' || $uri === '/') {
+    require __DIR__ . '/admin.html';
+    exit;
 }
