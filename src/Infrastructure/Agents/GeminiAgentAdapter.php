@@ -15,7 +15,14 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     public function __construct(string $apiKey = "", string $model = "gemini-2.5-flash")
     {
         $this->apiKey = trim($apiKey);
-        $this->model = !empty($model) ? $model : "gemini-2.5-flash";
+        
+        $clean = str_replace("models/", "", trim($model));
+        // Sanitize deprecated models to currently active production endpoints
+        if (empty($clean) || str_contains($clean, "1.5") || str_contains($clean, "2.0")) {
+            $clean = "gemini-2.5-flash";
+        }
+
+        $this->model = $clean;
     }
 
     /**
@@ -42,15 +49,14 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        $cleanModel = str_replace("models/", "", $this->model);
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key=" . urlencode($this->apiKey);
 
         $lastErrorMessage = "No response from Gemini API";
-        $attempts = 2; // Retry on 503 high demand spikes
+        $attempts = 2; // Auto-retry for transient server load
 
         for ($i = 0; $i < $attempts; $i++) {
             if ($i > 0) {
-                usleep(500000); // Wait 0.5s before retry
+                usleep(500000); // 0.5s pause
             }
 
             $ch = @curl_init($url);
@@ -100,9 +106,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
                 $errMsg = is_string($errorData["message"] ?? null) ? $errorData["message"] : "";
 
                 if ($errMsg !== "") {
-                    $lastErrorMessage = "{$cleanModel} ({$httpCode}): " . $errMsg;
+                    $lastErrorMessage = "{$this->model} ({$httpCode}): " . $errMsg;
                 } else {
-                    $lastErrorMessage = "{$cleanModel} (HTTP {$httpCode})";
+                    $lastErrorMessage = "{$this->model} (HTTP {$httpCode})";
                 }
             }
         }
