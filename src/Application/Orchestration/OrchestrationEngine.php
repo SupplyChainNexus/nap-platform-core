@@ -16,7 +16,7 @@ final class OrchestrationEngine
     public function __construct(?GeminiAgentAdapter $pricingAgent = null, ?SupplierRiskAgent $riskAgent = null)
     {
         $apiKey = getenv("GEMINI_API_KEY") ?: "";
-        $model = getenv("GEMINI_MODEL") ?: "gemini-3.5-flash";
+        $model = getenv("GEMINI_MODEL") ?: "gemini-2.5-flash";
 
         $this->pricingAgent = $pricingAgent ?? new GeminiAgentAdapter($apiKey, $model);
         $this->riskAgent = $riskAgent ?? new SupplierRiskAgent();
@@ -36,8 +36,11 @@ final class OrchestrationEngine
 
         $riskResult = $this->riskAgent->evaluateSupplierRisk($supplierId, $originalAmount);
 
-        $confidence = is_numeric($pricingResult["confidence"] ?? 0.5) ? (float) $pricingResult["confidence"] : 0.5;
-        $riskScore = is_numeric($riskResult["riskScore"] ?? 0.5) ? (float) $riskResult["riskScore"] : 0.5;
+        $rawConf = $pricingResult["confidence"] ?? 0.5;
+        $confidence = is_numeric($rawConf) ? (float) $rawConf : 0.5;
+
+        $rawRiskScore = $riskResult["riskScore"] ?? 0.5;
+        $riskScore = is_numeric($rawRiskScore) ? (float) $rawRiskScore : 0.5;
 
         $decision = match (true) {
             $riskScore > 0.50 || $confidence < 0.40 => "HUMAN_REVIEW_REQUIRED",
@@ -52,15 +55,20 @@ final class OrchestrationEngine
 
         $allReasons = array_merge($pricingReasons, $riskReasons);
 
+        $rawRec = $pricingResult["recommendedAmount"] ?? $originalAmount;
+        $recommendedVal = is_numeric($rawRec) ? (float) $rawRec : $originalAmount;
+
+        $riskTier = is_string($riskResult["riskTier"] ?? null) ? $riskResult["riskTier"] : "UNKNOWN";
+
         return [
             "decision" => $decision,
             "partNumber" => $partNumber,
             "supplierId" => strtoupper($supplierId),
             "originalAmount" => (int) $originalAmount,
-            "recommendedAmount" => (int) ($pricingResult["recommendedAmount"] ?? $originalAmount),
-            "savingsAmount" => (int) max(0, $originalAmount - (float) ($pricingResult["recommendedAmount"] ?? $originalAmount)),
+            "recommendedAmount" => (int) round($recommendedVal),
+            "savingsAmount" => (int) max(0, $originalAmount - $recommendedVal),
             "confidence" => $confidence,
-            "riskTier" => $riskResult["riskTier"] ?? "UNKNOWN",
+            "riskTier" => $riskTier,
             "riskScore" => $riskScore,
             "reasons" => $allReasons,
             "currency" => "ZAR"
