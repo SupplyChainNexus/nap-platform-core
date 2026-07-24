@@ -29,7 +29,8 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
         }
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent";
+        $modelName = str_starts_with($this->model, "models/") ? $this->model : "models/" . $this->model;
+        $url = "https://generativelanguage.googleapis.com/v1beta/{$modelName}:generateContent";
 
         $promptText = "Analyze this procurement payload for context template {$context->templateName} with variables: " 
             . json_encode($context->variables) 
