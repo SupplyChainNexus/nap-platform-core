@@ -68,17 +68,23 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         $decoded = json_decode((string) $response, true);
         $rawText = $decoded["candidates"][0]["content"]["parts"][0]["text"] ?? "";
 
-        /** @var array{recommendedAmount?: int|float, confidence?: float, reasons?: array<int, string>}|null $data */
+        /** @var array{recommendedAmount?: mixed, confidence?: mixed, reasons?: mixed}|null $data */
         $data = json_decode($rawText, true);
 
         if (!is_array($data) || !isset($data["recommendedAmount"])) {
             return $this->fallbackResponse($context, "Invalid JSON structure from Gemini response");
         }
 
+        $recAmount = is_numeric($data["recommendedAmount"]) ? (float) $data["recommendedAmount"] : 0.0;
+        $conf = is_numeric($data["confidence"] ?? null) ? (float) $data["confidence"] : 0.88;
+        
+        /** @var array<int, string> $reasons */
+        $reasons = is_array($data["reasons"] ?? null) ? $data["reasons"] : ["Evaluated via Google Gemini Agent"];
+
         return [
-            "recommendedAmount" => $data["recommendedAmount"],
-            "confidence" => (float) ($data["confidence"] ?? 0.88),
-            "reasons" => $data["reasons"] ?? ["Evaluated via Google Gemini Agent"]
+            "recommendedAmount" => $recAmount,
+            "confidence" => $conf,
+            "reasons" => $reasons
         ];
     }
 
@@ -87,7 +93,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
      */
     private function fallbackResponse(PromptContext $context, string $reason): array
     {
-        $base = (float) ($context->variables["normalizedAmount"] ?? 10000);
+        $rawBase = $context->variables["normalizedAmount"] ?? 10000;
+        $base = is_numeric($rawBase) ? (float) $rawBase : 10000.0;
+
         return [
             "recommendedAmount" => (int) round($base * 0.90),
             "confidence" => 0.60,
