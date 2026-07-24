@@ -42,70 +42,58 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        // Active production models supporting generateContent
-        $modelsToTry = array_unique([
-            $this->model,
-            "gemini-1.5-flash",
-            "gemini-2.0-flash"
+        $cleanModel = str_replace("models/", "", $this->model);
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
+
+        $ch = @curl_init($url);
+        if ($ch === false) {
+            return $this->fallbackResponse($context, "Unable to initialize cURL");
+        }
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, "NAP-Platform/1.0");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json"
         ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
 
-        $lastErrorMessage = "No response from Gemini API";
+        $response = @curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        @curl_close($ch);
 
-        foreach ($modelsToTry as $candidate) {
-            $cleanModel = str_replace("models/", "", $candidate);
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$cleanModel}:generateContent?key=" . urlencode($this->apiKey);
+        if ($response !== false && $httpCode === 200) {
+            /** @var array<string, mixed>|null $decoded */
+            $decoded = json_decode((string) $response, true);
+            
+            if (is_array($decoded) && isset($decoded["candidates"]) && is_array($decoded["candidates"])) {
+                /** @var array<string, mixed> $firstCandidate */
+                $firstCandidate = $decoded["candidates"][0] ?? [];
+                /** @var array<string, mixed> $content */
+                $content = $firstCandidate["content"] ?? [];
+                /** @var array<int, array<string, mixed>> $parts */
+                $parts = $content["parts"] ?? [];
+                $rawText = is_string($parts[0]["text"] ?? null) ? $parts[0]["text"] : "";
 
-            $ch = @curl_init($url);
-            if ($ch === false) {
-                continue;
-            }
+                /** @var array<string, mixed>|null $data */
+                $data = json_decode($rawText, true);
 
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, "NAP-Platform/1.0");
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Content-Type: application/json"
-            ]);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
-            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-
-            $response = @curl_exec($ch);
-            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            @curl_close($ch);
-
-            if ($response !== false && $httpCode === 200) {
-                /** @var array<string, mixed>|null $decoded */
-                $decoded = json_decode((string) $response, true);
-                
-                if (is_array($decoded) && isset($decoded["candidates"]) && is_array($decoded["candidates"])) {
-                    /** @var array<string, mixed> $firstCandidate */
-                    $firstCandidate = $decoded["candidates"][0] ?? [];
-                    /** @var array<string, mixed> $content */
-                    $content = $firstCandidate["content"] ?? [];
-                    /** @var array<int, array<string, mixed>> $parts */
-                    $parts = $content["parts"] ?? [];
-                    $rawText = is_string($parts[0]["text"] ?? null) ? $parts[0]["text"] : "";
-
-                    /** @var array<string, mixed>|null $data */
-                    $data = json_decode($rawText, true);
-
-                    if (is_array($data) && isset($data["recommendedAmount"])) {
-                        return $data;
-                    }
+                if (is_array($data) && isset($data["recommendedAmount"])) {
+                    return $data;
                 }
             }
+        }
 
-            if ($response !== false) {
-                /** @var array<string, mixed>|null $errDecoded */
-                $errDecoded = json_decode((string) $response, true);
-                $errorData = is_array($errDecoded["error"] ?? null) ? $errDecoded["error"] : [];
-                $errMsg = is_string($errorData["message"] ?? null) ? $errorData["message"] : "";
+        $lastErrorMessage = "{$cleanModel} (HTTP {$httpCode})";
+        if ($response !== false) {
+            /** @var array<string, mixed>|null $errDecoded */
+            $errDecoded = json_decode((string) $response, true);
+            $errorData = is_array($errDecoded["error"] ?? null) ? $errDecoded["error"] : [];
+            $errMsg = is_string($errorData["message"] ?? null) ? $errorData["message"] : "";
 
-                if ($errMsg !== "") {
-                    $lastErrorMessage = "{$cleanModel} ({$httpCode}): " . $errMsg;
-                } else {
-                    $lastErrorMessage = "{$cleanModel} (HTTP {$httpCode})";
-                }
+            if ($errMsg !== "") {
+                $lastErrorMessage = "{$cleanModel} ({$httpCode}): " . $errMsg;
             }
         }
 
