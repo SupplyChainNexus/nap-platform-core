@@ -6,12 +6,12 @@ ob_start();
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use NAP\Application\Intelligence\Prompting\PromptContext;
-use NAP\Infrastructure\Agents\GeminiAgentAdapter;
+use NAP\Application\Orchestration\OrchestrationEngine;
 use NAP\Infrastructure\Persistence\EvaluationRepository;
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
+// API Route: Multi-Agent Purchase Order Evaluation
 if ($uri === '/api/evaluate') {
     ob_end_clean();
     header('Content-Type: application/json; charset=utf-8');
@@ -24,22 +24,11 @@ if ($uri === '/api/evaluate') {
         $normalizedAmount = isset($data['normalizedAmount']) ? (float) $data['normalizedAmount'] : 85000.0;
         $supplierId = !empty($data['supplierId']) ? trim((string) $data['supplierId']) : 'SUPPLIER-001';
 
-        $context = new PromptContext('procurement_evaluation', [
-            'partNumber' => $partNumber,
-            'normalizedAmount' => $normalizedAmount,
-            'supplierId' => $supplierId
-        ]);
+        // Execute Multi-Agent Pipeline (Pricing Agent + Risk Agent)
+        $orchestrator = new OrchestrationEngine();
+        $evaluation = $orchestrator->evaluatePurchaseOrder($partNumber, $normalizedAmount, $supplierId);
 
-        $apiKey = getenv('GEMINI_API_KEY') ?: '';
-        $model = getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash';
-
-        $agent = new GeminiAgentAdapter($apiKey, $model);
-        $evaluation = $agent->generateStructuredOutput($context);
-
-        $evaluation['partNumber'] = $partNumber;
-        $evaluation['originalAmount'] = (int) $normalizedAmount;
-        $evaluation['currency'] = 'ZAR';
-
+        // PERSISTENCE: Record Multi-Agent Decision to Audit Trail
         try {
             $repo = new EvaluationRepository();
             $repo->logEvaluation($partNumber, $supplierId, $normalizedAmount, $evaluation);
@@ -61,6 +50,7 @@ if ($uri === '/api/evaluate') {
     exit;
 }
 
+// API Route: Retrieve Historical Telemetry Logs
 if ($uri === '/api/history') {
     ob_end_clean();
     header('Content-Type: application/json; charset=utf-8');
@@ -83,6 +73,7 @@ if ($uri === '/api/history') {
     exit;
 }
 
+// Serve Front-End Console
 if ($uri === '/admin.html' || $uri === '/') {
     ob_end_clean();
     if (file_exists(__DIR__ . '/admin.html')) {

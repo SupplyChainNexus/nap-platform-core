@@ -15,6 +15,8 @@
             --border-color: #2e3757;
             --code-bg: #090d16;
             --green-active: #10b981;
+            --amber-warn: #f59e0b;
+            --red-alert: #ef4444;
         }
 
         body {
@@ -67,6 +69,32 @@
             padding: 2px 6px;
             border-radius: 4px;
             margin-top: 4px;
+        }
+
+        .badge-decision {
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .decision-AUTO_APPROVE {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--green-active);
+            border: 1px solid var(--green-active);
+        }
+
+        .decision-HUMAN_REVIEW_REQUIRED {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--amber-warn);
+            border: 1px solid var(--amber-warn);
+        }
+
+        .decision-ESCALATE_TO_BOARD {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--red-alert);
+            border: 1px solid var(--red-alert);
         }
 
         .form-group {
@@ -140,7 +168,6 @@
             color: var(--text-main);
         }
 
-        /* History Table Styling */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -183,7 +210,7 @@
         <!-- Form Pane -->
         <div class="card">
             <h3 style="margin-top:0; font-size: 1rem;">Submit Purchase Order Evaluation</h3>
-            <div class="badge">GEMINI ACTIVE</div>
+            <div class="badge">GEMINI + RISK AGENT ACTIVE</div>
             
             <form id="evaluationForm" style="margin-top: 1.5rem;">
                 <div class="form-group">
@@ -208,14 +235,14 @@
         <!-- Telemetry Pane -->
         <div class="card response-container">
             <h3 class="response-title">AI Recommendation &amp; Telemetry</h3>
-            <pre id="telemetryOutput">// Ready for telemetry evaluation...</pre>
+            <pre id="telemetryOutput">// Ready for multi-agent evaluation...</pre>
         </div>
     </div>
 
     <!-- Audit History Section -->
     <div class="card">
         <h3 class="response-title" style="margin-bottom: 0.5rem;">📜 Telemetry Audit History</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0;">Persistent Event-Sourced evaluation logs stored in SQLite</p>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0;">Persistent Event-Sourced multi-agent logs stored in SQLite</p>
         
         <table>
             <thead>
@@ -226,19 +253,19 @@
                     <th>Original (ZAR)</th>
                     <th>Recommended (ZAR)</th>
                     <th>Est. Savings</th>
+                    <th>Decision</th>
                     <th>Confidence</th>
                 </tr>
             </thead>
             <tbody id="historyTableBody">
                 <tr>
-                    <td colspan="7" style="color: var(--text-muted); text-align: center;">Loading evaluation log history...</td>
+                    <td colspan="8" style="color: var(--text-muted); text-align: center;">Loading evaluation log history...</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // Fetch and display history table
         async function fetchHistory() {
             const tableBody = document.getElementById('historyTableBody');
             try {
@@ -246,26 +273,32 @@
                 const data = await response.json();
 
                 if (data.status === 'success' && data.history.length > 0) {
-                    tableBody.innerHTML = data.history.map(row => `
-                        <tr>
-                            <td>${row.created_at}</td>
-                            <td><strong>${row.part_number}</strong></td>
-                            <td>${row.supplier_id}</td>
-                            <td>R ${Number(row.original_amount).toLocaleString()}</td>
-                            <td>R ${Number(row.recommended_amount).toLocaleString()}</td>
-                            <td class="savings-tag">R ${Number(row.savings_amount).toLocaleString()}</td>
-                            <td>${(Number(row.confidence) * 100).toFixed(0)}%</td>
-                        </tr>
-                    `).join('');
+                    tableBody.innerHTML = data.history.map(row => {
+                        const decisionClass = row.reasons && row.reasons.some(r => r.includes('unverified')) 
+                            ? 'decision-HUMAN_REVIEW_REQUIRED' 
+                            : 'decision-AUTO_APPROVE';
+
+                        return `
+                            <tr>
+                                <td>${row.created_at}</td>
+                                <td><strong>${row.part_number}</strong></td>
+                                <td>${row.supplier_id}</td>
+                                <td>R ${Number(row.original_amount).toLocaleString()}</td>
+                                <td>R ${Number(row.recommended_amount).toLocaleString()}</td>
+                                <td class="savings-tag">R ${Number(row.savings_amount).toLocaleString()}</td>
+                                <td><span class="badge-decision ${decisionClass}">EVALUATED</span></td>
+                                <td>${(Number(row.confidence) * 100).toFixed(0)}%</td>
+                            </tr>
+                        `;
+                    }).join('');
                 } else {
-                    tableBody.innerHTML = `<tr><td colspan="7" style="color: var(--text-muted); text-align: center;">No history logs recorded yet.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="8" style="color: var(--text-muted); text-align: center;">No history logs recorded yet.</td></tr>`;
                 }
             } catch (err) {
-                tableBody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Failed to load history: ${err.message}</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Failed to load history: ${err.message}</td></tr>`;
             }
         }
 
-        // Form Submit Handler
         document.getElementById('evaluationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -277,8 +310,8 @@
             const supplierId = document.getElementById('supplierIdInput').value.trim();
 
             submitBtn.disabled = true;
-            submitBtn.innerText = 'Evaluating...';
-            outputBlock.innerText = '// Sending evaluation request to Gemini Agent...';
+            submitBtn.innerText = 'Evaluating Multi-Agent Pipeline...';
+            outputBlock.innerText = '// Orchestrating Gemini Pricing Agent + Supplier Risk Agent...';
 
             try {
                 const response = await fetch('/api/evaluate', {
@@ -296,7 +329,6 @@
                 try {
                     const data = JSON.parse(rawText);
                     outputBlock.innerText = JSON.stringify(data, null, 2);
-                    // Refresh audit table upon success
                     fetchHistory();
                 } catch (parseError) {
                     outputBlock.innerText = JSON.stringify({
@@ -316,7 +348,6 @@
             }
         });
 
-        // Load history on page load
         fetchHistory();
     </script>
 </body>
