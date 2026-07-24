@@ -28,7 +28,7 @@
         }
 
         .header {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 1rem;
         }
@@ -44,6 +44,39 @@
             color: var(--text-muted);
             font-size: 0.875rem;
         }
+
+        /* Executive KPI Metrics Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.2rem;
+            text-align: center;
+        }
+
+        .kpi-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+        }
+
+        .kpi-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        .kpi-value.green { color: var(--green-active); }
+        .kpi-value.purple { color: #818cf8; }
 
         .grid {
             display: grid;
@@ -72,7 +105,7 @@
         }
 
         .badge-decision {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: bold;
             padding: 3px 8px;
             border-radius: 4px;
@@ -206,11 +239,27 @@
         <p>Powered by PHP 8.3 CLI | Multi-Agent LLM Engine | Event-Sourced Architecture</p>
     </div>
 
+    <!-- Executive KPI Row -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">Total POs Evaluated</div>
+            <div class="kpi-value purple" id="kpiEvaluations">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Total Projected Savings</div>
+            <div class="kpi-value green" id="kpiSavings">R 0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Avg AI Confidence Score</div>
+            <div class="kpi-value" id="kpiConfidence">0%</div>
+        </div>
+    </div>
+
     <div class="grid">
         <!-- Form Pane -->
         <div class="card">
             <h3 style="margin-top:0; font-size: 1rem;">Submit Purchase Order Evaluation</h3>
-            <div class="badge">GEMINI + RISK AGENT ACTIVE</div>
+            <div class="badge">SECURED MULTI-AGENT ENGINE</div>
             
             <form id="evaluationForm" style="margin-top: 1.5rem;">
                 <div class="form-group">
@@ -273,10 +322,19 @@
                 const data = await response.json();
 
                 if (data.status === 'success' && data.history.length > 0) {
+                    let totalSavings = 0;
+                    let totalConfidence = 0;
+
                     tableBody.innerHTML = data.history.map(row => {
-                        const decisionClass = row.reasons && row.reasons.some(r => r.includes('unverified')) 
-                            ? 'decision-HUMAN_REVIEW_REQUIRED' 
-                            : 'decision-AUTO_APPROVE';
+                        const savings = Number(row.savings_amount) || 0;
+                        const confidence = Number(row.confidence) || 0;
+                        
+                        totalSavings += savings;
+                        totalConfidence += confidence;
+
+                        const decisionCode = (row.reasons && row.reasons.some(r => r.includes('unverified'))) 
+                            ? 'HUMAN_REVIEW_REQUIRED' 
+                            : 'AUTO_APPROVE';
 
                         return `
                             <tr>
@@ -285,12 +343,17 @@
                                 <td>${row.supplier_id}</td>
                                 <td>R ${Number(row.original_amount).toLocaleString()}</td>
                                 <td>R ${Number(row.recommended_amount).toLocaleString()}</td>
-                                <td class="savings-tag">R ${Number(row.savings_amount).toLocaleString()}</td>
-                                <td><span class="badge-decision ${decisionClass}">EVALUATED</span></td>
-                                <td>${(Number(row.confidence) * 100).toFixed(0)}%</td>
+                                <td class="savings-tag">R ${savings.toLocaleString()}</td>
+                                <td><span class="badge-decision decision-${decisionCode}">${decisionCode.replace('_', ' ')}</span></td>
+                                <td>${(confidence * 100).toFixed(0)}%</td>
                             </tr>
                         `;
                     }).join('');
+
+                    // Update KPI Cards
+                    document.getElementById('kpiEvaluations').innerText = data.history.length;
+                    document.getElementById('kpiSavings').innerText = 'R ' + totalSavings.toLocaleString();
+                    document.getElementById('kpiConfidence').innerText = (totalConfidence / data.history.length * 100).toFixed(0) + '%';
                 } else {
                     tableBody.innerHTML = `<tr><td colspan="8" style="color: var(--text-muted); text-align: center;">No history logs recorded yet.</td></tr>`;
                 }
@@ -310,8 +373,8 @@
             const supplierId = document.getElementById('supplierIdInput').value.trim();
 
             submitBtn.disabled = true;
-            submitBtn.innerText = 'Evaluating Multi-Agent Pipeline...';
-            outputBlock.innerText = '// Orchestrating Gemini Pricing Agent + Supplier Risk Agent...';
+            submitBtn.innerText = 'Evaluating Pipeline...';
+            outputBlock.innerText = '// Orchestrating Multi-Agent Pipeline...';
 
             try {
                 const response = await fetch('/api/evaluate', {
