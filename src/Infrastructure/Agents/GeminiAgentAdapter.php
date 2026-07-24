@@ -35,8 +35,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
         }
 
-        $partNumber = $context->variables['partNumber'] ?? 'NAP-SERIES-900';
-        $normalizedAmount = $context->variables['normalizedAmount'] ?? 85000;
+        $partNumber = (string) ($context->variables['partNumber'] ?? 'NAP-SERIES-900');
+        $rawAmount = $context->variables['normalizedAmount'] ?? 85000;
+        $normalizedAmount = is_numeric($rawAmount) ? (float) $rawAmount : 85000.0;
 
         $promptText = "You are a procurement evaluation AI. Analyze item '{$partNumber}' with base price {$normalizedAmount} ZAR. Respond strictly with raw valid JSON containing keys: {\"recommendedAmount\": number, \"confidence\": float_0_to_1, \"reasons\": [string]}";
 
@@ -62,10 +63,13 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         curl_setopt($ch, CURLOPT_USERAGENT, "NAP-Platform/1.0");
         curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 8); // Fast 8s hard limit to prevent gateway timeouts
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
 
         $response = @curl_exec($ch);
+        $curlError = @curl_error($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         @curl_close($ch);
 
@@ -84,7 +88,7 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             }
         }
 
-        $lastErrorMessage = "HTTP {$httpCode}";
+        $lastErrorMessage = !empty($curlError) ? "cURL Error: {$curlError}" : "HTTP {$httpCode}";
         if ($response !== false) {
             /** @var array<string, mixed>|null $errDecoded */
             $errDecoded = json_decode((string) $response, true);
@@ -103,7 +107,7 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     {
         $rawBase = $context->variables["normalizedAmount"] ?? 85000;
         $base = is_numeric($rawBase) ? (float) $rawBase : 85000.0;
-        $part = $context->variables["partNumber"] ?? 'NAP-SERIES-900';
+        $part = (string) ($context->variables["partNumber"] ?? 'NAP-SERIES-900');
 
         return [
             "recommendedAmount" => (int) round($base * 0.92),
