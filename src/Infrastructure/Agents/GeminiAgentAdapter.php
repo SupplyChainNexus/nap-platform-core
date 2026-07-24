@@ -29,9 +29,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
         }
 
-        $activeModel = $this->discoverActiveModel();
+        $activeModelPath = $this->discoverActiveModelPath();
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/{$activeModel}:generateContent?key=" . urlencode($this->apiKey);
+        $url = "https://generativelanguage.googleapis.com/v1beta/{$activeModelPath}:generateContent?key=" . urlencode($this->apiKey);
 
         $promptText = "Analyze this procurement payload for context template {$context->templateName} with variables: " 
             . json_encode($context->variables) 
@@ -85,48 +85,48 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             }
         }
 
-        return $this->fallbackResponse($context, "Gemini API HTTP Error {$httpCode} on model {$activeModel}");
+        return $this->fallbackResponse($context, "Gemini API HTTP Error {$httpCode} on model {$activeModelPath}");
     }
 
     /**
      * Query Google API for active generateContent models
      */
-    private function discoverActiveModel(): string
+    private function discoverActiveModelPath(): string
     {
         $listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" . urlencode($this->apiKey);
         
         $ch = @curl_init($listUrl);
-        if ($ch === false) {
-            return "models/gemini-1.5-flash";
-        }
+        if ($ch !== false) {
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            $response = @curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            @curl_close($ch);
 
-        $response = @curl_exec($ch);
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        @curl_close($ch);
+            if ($response !== false && $httpCode === 200) {
+                /** @var array<string, mixed>|null $decoded */
+                $decoded = json_decode((string) $response, true);
 
-        if ($response !== false && $httpCode === 200) {
-            /** @var array<string, mixed>|null $decoded */
-            $decoded = json_decode((string) $response, true);
+                if (is_array($decoded) && isset($decoded["models"]) && is_array($decoded["models"])) {
+                    /** @var array<int, array<string, mixed>> $modelList */
+                    $modelList = $decoded["models"];
 
-            if (is_array($decoded) && isset($decoded["models"]) && is_array($decoded["models"])) {
-                /** @var array<int, array<string, mixed>> $modelList */
-                $modelList = $decoded["models"];
+                    foreach ($modelList as $m) {
+                        $methods = is_array($m["supportedGenerationMethods"] ?? null) ? $m["supportedGenerationMethods"] : [];
+                        $name = is_string($m["name"] ?? null) ? $m["name"] : "";
 
-                foreach ($modelList as $m) {
-                    $methods = is_array($m["supportedGenerationMethods"] ?? null) ? $m["supportedGenerationMethods"] : [];
-                    $name = is_string($m["name"] ?? null) ? $m["name"] : "";
-
-                    if ($name !== "" && in_array("generateContent", $methods, true)) {
-                        return $name;
+                        if ($name !== "" && in_array("generateContent", $methods, true)) {
+                            // Ensure name starts with models/ exactly once
+                            return str_starts_with($name, "models/") ? $name : "models/" . $name;
+                        }
                     }
                 }
             }
         }
 
-        return str_starts_with($this->model, "models/") ? $this->model : "models/" . $this->model;
+        $cleanModel = str_replace("models/", "", $this->model);
+        return "models/" . $cleanModel;
     }
 
     /**
