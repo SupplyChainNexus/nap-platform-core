@@ -42,11 +42,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        // Standard Generally Available production Gemini models
+        // Active production models supporting generateContent
         $modelsToTry = array_unique([
             $this->model,
             "gemini-1.5-flash",
-            "gemini-1.5-pro"
+            "gemini-2.0-flash"
         ]);
 
         $lastErrorMessage = "No response from Gemini API";
