@@ -12,14 +12,13 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     private string $apiKey;
     private string $model;
 
-    public function __construct(string $apiKey = "", string $model = "gemini-2.5-flash")
+    public function __construct(string $apiKey = "", string $model = "gemini-3.5-flash")
     {
         $this->apiKey = trim($apiKey);
         
         $clean = str_replace("models/", "", trim($model));
-        // Sanitize deprecated models to currently active production endpoints
-        if (empty($clean) || str_contains($clean, "1.5") || str_contains($clean, "2.0")) {
-            $clean = "gemini-2.5-flash";
+        if (empty($clean) || str_contains($clean, "1.5") || str_contains($clean, "2.0") || str_contains($clean, "2.5")) {
+            $clean = "gemini-3.5-flash";
         }
 
         $this->model = $clean;
@@ -52,11 +51,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key=" . urlencode($this->apiKey);
 
         $lastErrorMessage = "No response from Gemini API";
-        $attempts = 2; // Auto-retry for transient server load
+        $attempts = 2;
 
         for ($i = 0; $i < $attempts; $i++) {
             if ($i > 0) {
-                usleep(500000); // 0.5s pause
+                usleep(500000);
             }
 
             $ch = @curl_init($url);
