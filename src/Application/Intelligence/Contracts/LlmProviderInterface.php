@@ -9,8 +9,10 @@ use NAP\Application\Intelligence\Prompting\PromptContext;
 interface LlmProviderInterface
 {
     /**
+     * @param PromptContext $context
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
     public function generateStructuredOutput(PromptContext $context, array $options = []): array;
 }
+

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace NAP\Infrastructure\Agents;
 
+use NAP\Application\Intelligence\Contracts\LlmProviderInterface;
 use NAP\Application\Intelligence\Prompting\PromptContext;
-use NAP\Domain\Intelligence\LlmProviderInterface;
 
 final class GeminiAgentAdapter implements LlmProviderInterface
 {
@@ -19,9 +19,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     }
 
     /**
-     * @return array{recommendedAmount: int|float, confidence: float, reasons: array<int, string>}
+     * @param PromptContext $context
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
      */
-    public function generateStructuredOutput(PromptContext $context): array
+    public function generateStructuredOutput(PromptContext $context, array $options = []): array
     {
         if (empty($this->apiKey)) {
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
@@ -68,28 +70,18 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         $decoded = json_decode((string) $response, true);
         $rawText = $decoded["candidates"][0]["content"]["parts"][0]["text"] ?? "";
 
-        /** @var array{recommendedAmount?: mixed, confidence?: mixed, reasons?: mixed}|null $data */
+        /** @var array<string, mixed>|null $data */
         $data = json_decode($rawText, true);
 
         if (!is_array($data) || !isset($data["recommendedAmount"])) {
             return $this->fallbackResponse($context, "Invalid JSON structure from Gemini response");
         }
 
-        $recAmount = is_numeric($data["recommendedAmount"]) ? (float) $data["recommendedAmount"] : 0.0;
-        $conf = is_numeric($data["confidence"] ?? null) ? (float) $data["confidence"] : 0.88;
-        
-        /** @var array<int, string> $reasons */
-        $reasons = is_array($data["reasons"] ?? null) ? $data["reasons"] : ["Evaluated via Google Gemini Agent"];
-
-        return [
-            "recommendedAmount" => $recAmount,
-            "confidence" => $conf,
-            "reasons" => $reasons
-        ];
+        return $data;
     }
 
     /**
-     * @return array{recommendedAmount: int|float, confidence: float, reasons: array<int, string>}
+     * @return array<string, mixed>
      */
     private function fallbackResponse(PromptContext $context, string $reason): array
     {
