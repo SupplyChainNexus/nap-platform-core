@@ -2,16 +2,20 @@
 
 declare(strict_types=1);
 
+// Prevent any output buffering or error leaks from breaking JSON rendering
+ob_start();
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use NAP\Application\Intelligence\Prompting\PromptContext;
 use NAP\Infrastructure\Agents\GeminiAgentAdapter;
 
-// Route API requests cleanly
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
+// Handle API requests
 if ($uri === '/api/evaluate') {
-    header('Content-Type: application/json');
+    ob_end_clean(); // Discard any warning/notice outputs
+    header('Content-Type: application/json; charset=utf-8');
 
     try {
         $rawInput = file_get_contents('php://input');
@@ -43,17 +47,27 @@ if ($uri === '/api/evaluate') {
             'evaluation' => $evaluation
         ], JSON_PRETTY_PRINT);
     } catch (\Throwable $e) {
-        http_response_code(200); // Return valid JSON on errors to prevent UI crashes
         echo json_encode([
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => 'API Error: ' . $e->getMessage()
         ], JSON_PRETTY_PRINT);
     }
     exit;
 }
 
-// Serve static UI if requested directly
+// Serve front-end admin console
 if ($uri === '/admin.html' || $uri === '/') {
-    require __DIR__ . '/admin.html';
+    ob_end_clean();
+    if (file_exists(__DIR__ . '/admin.html')) {
+        require __DIR__ . '/admin.html';
+    } else {
+        echo "Admin console file not found.";
+    }
     exit;
 }
+
+// Fallback for unhandled routes
+ob_end_clean();
+header('Content-Type: application/json');
+echo json_encode(['status' => 'error', 'message' => 'Route not found: ' . $uri]);
+exit;

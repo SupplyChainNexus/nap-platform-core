@@ -148,7 +148,6 @@
     </div>
 
     <div class="grid">
-        <!-- Input Form -->
         <div class="card">
             <h3 style="margin-top:0; font-size: 1rem;">Submit Purchase Order Evaluation</h3>
             <div class="badge">GEMINI ACTIVE</div>
@@ -173,7 +172,6 @@
             </form>
         </div>
 
-        <!-- Telemetry Output -->
         <div class="card response-container">
             <h3 class="response-title">AI Recommendation &amp; Telemetry</h3>
             <pre id="telemetryOutput">// Ready for telemetry evaluation...</pre>
@@ -187,7 +185,6 @@
             const submitBtn = document.getElementById('submitBtn');
             const outputBlock = document.getElementById('telemetryOutput');
 
-            // Read typed values directly from DOM elements
             const partNumber = document.getElementById('partNumberInput').value.trim();
             const normalizedAmount = parseFloat(document.getElementById('baseAmountInput').value) || 85000;
             const supplierId = document.getElementById('supplierIdInput').value.trim();
@@ -199,9 +196,7 @@
             try {
                 const response = await fetch('/api/evaluate', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         partNumber: partNumber,
                         normalizedAmount: normalizedAmount,
@@ -209,12 +204,22 @@
                     })
                 });
 
-                const data = await response.json();
-                outputBlock.innerText = JSON.stringify(data, null, 2);
+                const rawText = await response.text();
+                
+                try {
+                    const data = JSON.parse(rawText);
+                    outputBlock.innerText = JSON.stringify(data, null, 2);
+                } catch (parseError) {
+                    outputBlock.innerText = JSON.stringify({
+                        status: 'error',
+                        message: 'Server returned non-JSON response.',
+                        rawResponse: rawText
+                    }, null, 2);
+                }
             } catch (err) {
                 outputBlock.innerText = JSON.stringify({
                     status: 'error',
-                    message: 'Failed to connect to endpoint: ' + err.message
+                    message: 'Network request failed: ' + err.message
                 }, null, 2);
             } finally {
                 submitBtn.disabled = false;
