@@ -30,11 +30,13 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             return $this->fallbackResponse($context, "Missing GEMINI_API_KEY environment variable");
         }
 
-        $partNumber = (string) ($context->variables['partNumber'] ?? 'NAP-SERIES-900');
-        $rawAmount = $context->variables['normalizedAmount'] ?? 85000;
+        $rawPart = $context->variables["partNumber"] ?? "NAP-SERIES-900";
+        $partNumber = is_string($rawPart) ? $rawPart : "NAP-SERIES-900";
+
+        $rawAmount = $context->variables["normalizedAmount"] ?? 85000;
         $normalizedAmount = is_numeric($rawAmount) ? (float) $rawAmount : 85000.0;
 
-        $promptText = "You are an enterprise procurement AI agent. Evaluate item '{$partNumber}' with base cost {$normalizedAmount} ZAR. Return strictly raw valid JSON with keys: {\"recommendedAmount\": number, \"confidence\": float_0_to_1, \"reasons\": [string]}";
+        $promptText = "You are an enterprise procurement AI agent. Evaluate item \"{$partNumber}\" with base cost {$normalizedAmount} ZAR. Return strictly raw valid JSON with keys: {\"recommendedAmount\": number, \"confidence\": float_0_to_1, \"reasons\": [string]}";
 
         $payload = [
             "contents" => [
@@ -45,7 +47,6 @@ final class GeminiAgentAdapter implements LlmProviderInterface
             ]
         ];
 
-        // Failover order: Primary configured model -> gemini-2.5-flash -> gemini-3.5-flash
         $modelsToTry = array_values(array_unique([
             $this->model,
             "gemini-2.5-flash",
@@ -59,7 +60,7 @@ final class GeminiAgentAdapter implements LlmProviderInterface
 
             for ($attempt = 1; $attempt <= 2; $attempt++) {
                 if ($attempt > 1) {
-                    usleep(400000); // Wait 0.4s on 503 high demand spike before retrying
+                    usleep(400000);
                 }
 
                 $ch = @curl_init($url);
@@ -83,8 +84,15 @@ final class GeminiAgentAdapter implements LlmProviderInterface
                     /** @var array<string, mixed>|null $decoded */
                     $decoded = json_decode((string) $response, true);
 
-                    if (is_array($decoded) && isset($decoded["candidates"][0]["content"]["parts"][0]["text"])) {
-                        $rawText = (string) $decoded["candidates"][0]["content"]["parts"][0]["text"];
+                    if (is_array($decoded) && isset($decoded["candidates"]) && is_array($decoded["candidates"])) {
+                        /** @var array<string, mixed> $firstCand */
+                        $firstCand = $decoded["candidates"][0] ?? [];
+                        /** @var array<string, mixed> $content */
+                        $content = is_array($firstCand["content"] ?? null) ? $firstCand["content"] : [];
+                        /** @var array<int, array<string, mixed>> $parts */
+                        $parts = is_array($content["parts"] ?? null) ? $content["parts"] : [];
+                        $rawText = is_string($parts[0]["text"] ?? null) ? $parts[0]["text"] : "";
+
                         /** @var array<string, mixed>|null $data */
                         $data = json_decode($rawText, true);
 
@@ -97,8 +105,9 @@ final class GeminiAgentAdapter implements LlmProviderInterface
                 if ($response !== false) {
                     /** @var array<string, mixed>|null $errDecoded */
                     $errDecoded = json_decode((string) $response, true);
-                    $errMsg = is_string($errDecoded["error"]["message"] ?? null) ? $errDecoded["error"]["message"] : "";
-                    
+                    $errorData = is_array($errDecoded["error"] ?? null) ? $errDecoded["error"] : [];
+                    $errMsg = is_string($errorData["message"] ?? null) ? $errorData["message"] : "";
+
                     if ($errMsg !== "") {
                         $lastError = "{$targetModel} ({$httpCode}): " . $errMsg;
                     }
@@ -116,13 +125,14 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     {
         $rawBase = $context->variables["normalizedAmount"] ?? 85000;
         $base = is_numeric($rawBase) ? (float) $rawBase : 85000.0;
-        $part = (string) ($context->variables["partNumber"] ?? 'NAP-SERIES-900');
+        $rawPart = $context->variables["partNumber"] ?? "NAP-SERIES-900";
+        $part = is_string($rawPart) ? $rawPart : "NAP-SERIES-900";
 
         return [
             "recommendedAmount" => (int) round($base * 0.92),
             "confidence" => 0.85,
             "reasons" => [
-                "Evaluated target item '{$part}' against local benchmark catalogue.",
+                "Evaluated target item \"{$part}\" against local benchmark catalogue.",
                 "Applied standard volume tier discount (8%).",
                 "Note: Fast fallback applied due to remote API status ({$reason})."
             ]

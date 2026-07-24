@@ -47,6 +47,7 @@
             display: grid;
             grid-template-columns: 280px 1fr;
             gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
         .card {
@@ -138,6 +139,37 @@
             margin-bottom: 1rem;
             color: var(--text-main);
         }
+
+        /* History Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--code-bg);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover {
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .savings-tag {
+            color: var(--green-active);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -148,6 +180,7 @@
     </div>
 
     <div class="grid">
+        <!-- Form Pane -->
         <div class="card">
             <h3 style="margin-top:0; font-size: 1rem;">Submit Purchase Order Evaluation</h3>
             <div class="badge">GEMINI ACTIVE</div>
@@ -172,13 +205,67 @@
             </form>
         </div>
 
+        <!-- Telemetry Pane -->
         <div class="card response-container">
             <h3 class="response-title">AI Recommendation &amp; Telemetry</h3>
             <pre id="telemetryOutput">// Ready for telemetry evaluation...</pre>
         </div>
     </div>
 
+    <!-- Audit History Section -->
+    <div class="card">
+        <h3 class="response-title" style="margin-bottom: 0.5rem;">📜 Telemetry Audit History</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0;">Persistent Event-Sourced evaluation logs stored in SQLite</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Part Number</th>
+                    <th>Supplier ID</th>
+                    <th>Original (ZAR)</th>
+                    <th>Recommended (ZAR)</th>
+                    <th>Est. Savings</th>
+                    <th>Confidence</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <tr>
+                    <td colspan="7" style="color: var(--text-muted); text-align: center;">Loading evaluation log history...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
     <script>
+        // Fetch and display history table
+        async function fetchHistory() {
+            const tableBody = document.getElementById('historyTableBody');
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+
+                if (data.status === 'success' && data.history.length > 0) {
+                    tableBody.innerHTML = data.history.map(row => `
+                        <tr>
+                            <td>${row.created_at}</td>
+                            <td><strong>${row.part_number}</strong></td>
+                            <td>${row.supplier_id}</td>
+                            <td>R ${Number(row.original_amount).toLocaleString()}</td>
+                            <td>R ${Number(row.recommended_amount).toLocaleString()}</td>
+                            <td class="savings-tag">R ${Number(row.savings_amount).toLocaleString()}</td>
+                            <td>${(Number(row.confidence) * 100).toFixed(0)}%</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tableBody.innerHTML = `<tr><td colspan="7" style="color: var(--text-muted); text-align: center;">No history logs recorded yet.</td></tr>`;
+                }
+            } catch (err) {
+                tableBody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Failed to load history: ${err.message}</td></tr>`;
+            }
+        }
+
+        // Form Submit Handler
         document.getElementById('evaluationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -209,6 +296,8 @@
                 try {
                     const data = JSON.parse(rawText);
                     outputBlock.innerText = JSON.stringify(data, null, 2);
+                    // Refresh audit table upon success
+                    fetchHistory();
                 } catch (parseError) {
                     outputBlock.innerText = JSON.stringify({
                         status: 'error',
@@ -226,6 +315,9 @@
                 submitBtn.innerText = 'Evaluate via Gemini AI Agent';
             }
         });
+
+        // Load history on page load
+        fetchHistory();
     </script>
 </body>
 </html>

@@ -2,19 +2,18 @@
 
 declare(strict_types=1);
 
-// Prevent any output buffering or error leaks from breaking JSON rendering
 ob_start();
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use NAP\Application\Intelligence\Prompting\PromptContext;
 use NAP\Infrastructure\Agents\GeminiAgentAdapter;
+use NAP\Infrastructure\Persistence\EvaluationRepository;
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
-// Handle API requests
 if ($uri === '/api/evaluate') {
-    ob_end_clean(); // Discard any warning/notice outputs
+    ob_end_clean();
     header('Content-Type: application/json; charset=utf-8');
 
     try {
@@ -32,7 +31,7 @@ if ($uri === '/api/evaluate') {
         ]);
 
         $apiKey = getenv('GEMINI_API_KEY') ?: '';
-        $model = getenv('GEMINI_MODEL') ?: 'gemini-2.5-flash';
+        $model = getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash';
 
         $agent = new GeminiAgentAdapter($apiKey, $model);
         $evaluation = $agent->generateStructuredOutput($context);
@@ -40,6 +39,13 @@ if ($uri === '/api/evaluate') {
         $evaluation['partNumber'] = $partNumber;
         $evaluation['originalAmount'] = (int) $normalizedAmount;
         $evaluation['currency'] = 'ZAR';
+
+        try {
+            $repo = new EvaluationRepository();
+            $repo->logEvaluation($partNumber, $supplierId, $normalizedAmount, $evaluation);
+        } catch (\Throwable $dbEx) {
+            // Silently skip if disk write is constrained
+        }
 
         echo json_encode([
             'status' => 'success',
@@ -55,7 +61,28 @@ if ($uri === '/api/evaluate') {
     exit;
 }
 
-// Serve front-end admin console
+if ($uri === '/api/history') {
+    ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        $repo = new EvaluationRepository();
+        $history = $repo->getRecentEvaluations(20);
+
+        echo json_encode([
+            'status' => 'success',
+            'count' => count($history),
+            'history' => $history
+        ], JSON_PRETTY_PRINT);
+    } catch (\Throwable $e) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to fetch history: ' . $e->getMessage()
+        ], JSON_PRETTY_PRINT);
+    }
+    exit;
+}
+
 if ($uri === '/admin.html' || $uri === '/') {
     ob_end_clean();
     if (file_exists(__DIR__ . '/admin.html')) {
@@ -66,7 +93,6 @@ if ($uri === '/admin.html' || $uri === '/') {
     exit;
 }
 
-// Fallback for unhandled routes
 ob_end_clean();
 header('Content-Type: application/json');
 echo json_encode(['status' => 'error', 'message' => 'Route not found: ' . $uri]);
