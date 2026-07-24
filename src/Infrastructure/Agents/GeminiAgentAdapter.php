@@ -12,16 +12,11 @@ final class GeminiAgentAdapter implements LlmProviderInterface
     private string $apiKey;
     private string $model;
 
-    public function __construct(string $apiKey = "", string $model = "gemini-2.5-flash")
+    public function __construct(string $apiKey = "", string $model = "gemini-3.5-flash")
     {
         $this->apiKey = trim($apiKey);
-        
         $clean = str_replace("models/", "", trim($model));
-        if (empty($clean) || str_contains($clean, "1.5") || str_contains($clean, "2.0")) {
-            $clean = "gemini-2.5-flash";
-        }
-
-        $this->model = $clean;
+        $this->model = !empty($clean) ? $clean : "gemini-3.5-flash";
     }
 
     /**
@@ -39,65 +34,79 @@ final class GeminiAgentAdapter implements LlmProviderInterface
         $rawAmount = $context->variables['normalizedAmount'] ?? 85000;
         $normalizedAmount = is_numeric($rawAmount) ? (float) $rawAmount : 85000.0;
 
-        $promptText = "You are a procurement evaluation AI. Analyze item '{$partNumber}' with base price {$normalizedAmount} ZAR. Respond strictly with raw valid JSON containing keys: {\"recommendedAmount\": number, \"confidence\": float_0_to_1, \"reasons\": [string]}";
+        $promptText = "You are an enterprise procurement AI agent. Evaluate item '{$partNumber}' with base cost {$normalizedAmount} ZAR. Return strictly raw valid JSON with keys: {\"recommendedAmount\": number, \"confidence\": float_0_to_1, \"reasons\": [string]}";
 
         $payload = [
             "contents" => [
                 ["parts" => [["text" => $promptText]]]
             ],
             "generationConfig" => [
-                "responseMimeType" => "application/json",
-                "temperature" => 0.2
+                "responseMimeType" => "application/json"
             ]
         ];
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key=" . urlencode($this->apiKey);
+        // Failover order: Primary configured model -> gemini-2.5-flash -> gemini-3.5-flash
+        $modelsToTry = array_values(array_unique([
+            $this->model,
+            "gemini-2.5-flash",
+            "gemini-3.5-flash"
+        ]));
 
-        $ch = @curl_init($url);
-        if ($ch === false) {
-            return $this->fallbackResponse($context, "Failed to initialize cURL");
-        }
+        $lastError = "No response from API";
 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_USERAGENT, "NAP-Platform/1.0");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        foreach ($modelsToTry as $targetModel) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$targetModel}:generateContent?key=" . urlencode($this->apiKey);
 
-        $response = @curl_exec($ch);
-        $curlError = @curl_error($ch);
-        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        @curl_close($ch);
+            for ($attempt = 1; $attempt <= 2; $attempt++) {
+                if ($attempt > 1) {
+                    usleep(400000); // Wait 0.4s on 503 high demand spike before retrying
+                }
 
-        if ($response !== false && $httpCode === 200) {
-            /** @var array<string, mixed>|null $decoded */
-            $decoded = json_decode((string) $response, true);
-            
-            if (is_array($decoded) && isset($decoded["candidates"][0]["content"]["parts"][0]["text"])) {
-                $rawText = (string) $decoded["candidates"][0]["content"]["parts"][0]["text"];
-                /** @var array<string, mixed>|null $data */
-                $data = json_decode($rawText, true);
+                $ch = @curl_init($url);
+                if ($ch === false) {
+                    continue;
+                }
 
-                if (is_array($data) && isset($data["recommendedAmount"])) {
-                    return $data;
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_USERAGENT, "NAP-Platform/1.0");
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, (string) json_encode($payload));
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+
+                $response = @curl_exec($ch);
+                $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                @curl_close($ch);
+
+                if ($response !== false && $httpCode === 200) {
+                    /** @var array<string, mixed>|null $decoded */
+                    $decoded = json_decode((string) $response, true);
+
+                    if (is_array($decoded) && isset($decoded["candidates"][0]["content"]["parts"][0]["text"])) {
+                        $rawText = (string) $decoded["candidates"][0]["content"]["parts"][0]["text"];
+                        /** @var array<string, mixed>|null $data */
+                        $data = json_decode($rawText, true);
+
+                        if (is_array($data) && isset($data["recommendedAmount"])) {
+                            return $data;
+                        }
+                    }
+                }
+
+                if ($response !== false) {
+                    /** @var array<string, mixed>|null $errDecoded */
+                    $errDecoded = json_decode((string) $response, true);
+                    $errMsg = is_string($errDecoded["error"]["message"] ?? null) ? $errDecoded["error"]["message"] : "";
+                    
+                    if ($errMsg !== "") {
+                        $lastError = "{$targetModel} ({$httpCode}): " . $errMsg;
+                    }
                 }
             }
         }
 
-        $lastErrorMessage = !empty($curlError) ? "cURL Error: {$curlError}" : "HTTP {$httpCode}";
-        if ($response !== false) {
-            /** @var array<string, mixed>|null $errDecoded */
-            $errDecoded = json_decode((string) $response, true);
-            if (isset($errDecoded["error"]["message"]) && is_string($errDecoded["error"]["message"])) {
-                $lastErrorMessage = "{$this->model} ({$httpCode}): " . $errDecoded["error"]["message"];
-            }
-        }
-
-        return $this->fallbackResponse($context, $lastErrorMessage);
+        return $this->fallbackResponse($context, $lastError);
     }
 
     /**
