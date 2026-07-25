@@ -9,6 +9,7 @@ use NAP\Infrastructure\Cache\ArrayCacheDriver;
 use NAP\Infrastructure\Cache\CacheInterface;
 use NAP\Infrastructure\OpenApi\OpenApiGenerator;
 use NAP\Infrastructure\Persistence\DatabaseAdapter;
+use NAP\Infrastructure\Persistence\PartCrossReferenceRepository;
 use NAP\Infrastructure\ReadModel\AnalyticsProjector;
 
 final class ConsoleApplication
@@ -75,6 +76,9 @@ final class ConsoleApplication
                     processed_at TEXT NOT NULL
                 );
             ");
+
+            $partRepo = new PartCrossReferenceRepository($this->db);
+            $partRepo->initializeSchema();
 
             echo "[SUCCESS] Database schemas migrated successfully.\n";
             return 0;
