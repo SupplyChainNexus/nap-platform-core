@@ -1,31 +1,32 @@
-name: CI / Quality Pipeline
+name: CI/CD Pipeline - NAP Platform Core
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   test-and-analyze:
+    name: PHPStan & PHPUnit Verification
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Setup PHP Environment
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          extensions: pdo, pdo_sqlite, intl, zip
+          php-version: '8.3'
+          extensions: pdo, pdo_sqlite, zip
           coverage: none
 
-      - name: Install Dependencies
-        run: composer install --prefer-dist --no-progress
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Run PHPStan Level 9
-        run: composer exec phpstan analyse src
+      - name: Run PHPStan Level 9 Analysis
+        run: vendor/bin/phpstan analyse src --level=9
 
-      - name: Run PHPUnit Test Suite
-        run: php -d extension=pdo_sqlite vendor/bin/phpunit tests
+      - name: Execute PHPUnit Test Suite
+        run: php -d extension=pdo_sqlite vendor/bin/phpunit tests --no-output-during-tests

@@ -2,19 +2,19 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nap-platform-core
     ports:
-      - "8000:8000"
+      - "8080:80"
     volumes:
-      - .:/var/www/html
+      - ./database.sqlite:/var/www/html/database.sqlite
     environment:
       - APP_ENV=production
-    command: php -S 0.0.0.0:8000 -t public
-
-  worker:
-    build: .
-    volumes:
-      - .:/var/www/html
-    environment:
-      - APP_ENV=production
-    command: php bin/nap worker --interval=2
+      - APP_DEBUG=false
+    healthcheck:
+      test: ["CMD", "php", "bin/nap", "help"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
