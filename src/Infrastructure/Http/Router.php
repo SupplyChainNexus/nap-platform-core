@@ -12,6 +12,14 @@ final class Router
     /**
      * @param callable(array<string, mixed>): array{status_code: int, body: array<string, mixed>} $handler
      */
+    public function get(string $path, callable $handler): void
+    {
+        $this->routes["GET"][$path] = $handler;
+    }
+
+    /**
+     * @param callable(array<string, mixed>): array{status_code: int, body: array<string, mixed>} $handler
+     */
     public function post(string $path, callable $handler): void
     {
         $this->routes["POST"][$path] = $handler;
@@ -24,10 +32,18 @@ final class Router
     public function dispatch(string $method, string $uri, array $payload = []): array
     {
         $path = (string) parse_url($uri, PHP_URL_PATH);
+        $queryParams = [];
+        $queryStr = (string) parse_url($uri, PHP_URL_QUERY);
+        if ($queryStr !== "") {
+            parse_str($queryStr, $queryParams);
+        }
+
         $method = strtoupper($method);
 
         if (isset($this->routes[$method][$path])) {
-            return ($this->routes[$method][$path])($payload);
+            /** @var array<string, mixed> $mergedPayload */
+            $mergedPayload = array_merge($payload, $queryParams);
+            return ($this->routes[$method][$path])($mergedPayload);
         }
 
         return [
