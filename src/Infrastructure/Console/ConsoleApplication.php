@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace NAP\Infrastructure\Console;
 
 use NAP\Domain\Events\AbstractDomainEvent;
+use NAP\Infrastructure\Cache\ArrayCacheDriver;
 use NAP\Infrastructure\Cache\CacheInterface;
 use NAP\Infrastructure\OpenApi\OpenApiGenerator;
 use NAP\Infrastructure\Persistence\DatabaseAdapter;
@@ -36,6 +37,7 @@ final class ConsoleApplication
             "projections:rebuild" => $this->runRebuildProjections(),
             "cache:clear" => $this->runClearCache(),
             "openapi:generate" => $this->runGenerateOpenApi(),
+            "benchmark" => $this->runBenchmark($argv[2] ?? "1000"),
             default => $this->runHelp()
         };
     }
@@ -149,6 +151,25 @@ final class ConsoleApplication
         return 0;
     }
 
+    private function runBenchmark(string $iterationsArg): int
+    {
+        $this->runMigrate();
+        $cache = $this->cache ?? new ArrayCacheDriver();
+        $runner = new BenchmarkRunner($this->db, $cache);
+        $iterations = is_numeric($iterationsArg) ? (int) $iterationsArg : 1000;
+
+        echo "=== NAP Platform Core Benchmark Suite ===\n";
+
+        /** @var array{iterations: int, eventStoreWrite: array{durationSec: float, opsPerSec: float}, projectionReplay: array{replayedEvents: int, durationSec: float, opsPerSec: float}, cacheLayer: array{durationSec: float, opsPerSec: float}} $results */
+        $results = $runner->runSuite($iterations);
+
+        echo "Iterations: " . $results['iterations'] . "\n";
+        echo "[Event Store Writes]  Duration: " . $results['eventStoreWrite']['durationSec'] . "s | Throughput: " . $results['eventStoreWrite']['opsPerSec'] . " ops/sec\n";
+        echo "[Projection Replay]   Duration: " . $results['projectionReplay']['durationSec'] . "s | Throughput: " . $results['projectionReplay']['opsPerSec'] . " ops/sec\n";
+        echo "[Cache Operations]    Duration: " . $results['cacheLayer']['durationSec'] . "s | Throughput: " . $results['cacheLayer']['opsPerSec'] . " ops/sec\n";
+        return 0;
+    }
+
     private function runHelp(): int
     {
         echo "NAP Platform Core CLI Driver\n";
@@ -157,6 +178,7 @@ final class ConsoleApplication
         echo "  projections:rebuild  - Replay event store to rebuild CQRS read models\n";
         echo "  cache:clear          - Flush active cache store\n";
         echo "  openapi:generate     - Output OpenAPI 3.0 specification JSON\n";
+        echo "  benchmark [count]    - Execute event store & projection stress benchmark\n";
         return 0;
     }
 }
