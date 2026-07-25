@@ -6,6 +6,7 @@ namespace NAP\Infrastructure\Console;
 
 use NAP\Domain\Events\AbstractDomainEvent;
 use NAP\Infrastructure\Cache\CacheInterface;
+use NAP\Infrastructure\OpenApi\OpenApiGenerator;
 use NAP\Infrastructure\Persistence\DatabaseAdapter;
 use NAP\Infrastructure\ReadModel\AnalyticsProjector;
 
@@ -34,6 +35,7 @@ final class ConsoleApplication
             "migrate" => $this->runMigrate(),
             "projections:rebuild" => $this->runRebuildProjections(),
             "cache:clear" => $this->runClearCache(),
+            "openapi:generate" => $this->runGenerateOpenApi(),
             default => $this->runHelp()
         };
     }
@@ -140,6 +142,13 @@ final class ConsoleApplication
         return 0;
     }
 
+    private function runGenerateOpenApi(): int
+    {
+        $generator = new OpenApiGenerator();
+        echo $generator->toJson();
+        return 0;
+    }
+
     private function runHelp(): int
     {
         echo "NAP Platform Core CLI Driver\n";
@@ -147,6 +156,7 @@ final class ConsoleApplication
         echo "  migrate              - Run database schema migrations\n";
         echo "  projections:rebuild  - Replay event store to rebuild CQRS read models\n";
         echo "  cache:clear          - Flush active cache store\n";
+        echo "  openapi:generate     - Output OpenAPI 3.0 specification JSON\n";
         return 0;
     }
 }
