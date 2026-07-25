@@ -4,23 +4,14 @@ declare(strict_types=1);
 
 namespace NAP\Domain\Events;
 
-use DateTimeImmutable;
-
 final class PurchaseOrderIssued extends AbstractDomainEvent
 {
     /**
-     * @param string $aggregateId
-     * @param array<string, mixed> $payload
-     * @param int $version
-     * @param DateTimeImmutable|null $occurredAt
+     * @param array{poId: string, quoteId: string, supplierId: string, caseId: string, totalAmount: float, savingsAmount: float} $payload
      */
-    public function __construct(
-        string $aggregateId,
-        array $payload,
-        int $version = 1,
-        ?DateTimeImmutable $occurredAt = null
-    ) {
-        parent::__construct($aggregateId, $payload, $version, $occurredAt);
+    public function __construct(string $streamId, array $payload)
+    {
+        parent::__construct($streamId, $payload);
     }
 
     public function getEventName(): string
