@@ -25,6 +25,11 @@ final class IssuePurchaseOrderHandler
         $poId = "PO-" . strtoupper(bin2hex(random_bytes(4)));
         $savings = $quote->calculateSavings();
 
+        $lineItemsArray = array_map(
+            static fn ($item) => $item->toArray(),
+            $quote->getLineItems()
+        );
+
         return new PurchaseOrderIssued(
             $quote->getCaseId(),
             [
@@ -33,7 +38,8 @@ final class IssuePurchaseOrderHandler
                 "supplierId" => $quote->getSupplierId(),
                 "caseId" => $quote->getCaseId(),
                 "totalAmount" => $quote->getQuotedAmount(),
-                "savingsAmount" => $savings
+                "savingsAmount" => $savings,
+                "lineItems" => $lineItemsArray,
             ]
         );
     }

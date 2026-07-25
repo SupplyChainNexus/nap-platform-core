@@ -9,29 +9,30 @@ final class SupplierQuote
     private string $quoteId;
     private string $supplierId;
     private string $caseId;
-    private float $quotedAmount;
-    private float $benchmarkPrice;
 
+    /** @var array<int, QuoteLineItem> */
+    private array $lineItems;
+
+    /**
+     * @param string $quoteId
+     * @param string $supplierId
+     * @param string $caseId
+     * @param array<int, QuoteLineItem> $lineItems
+     */
     public function __construct(
         string $quoteId,
         string $supplierId,
         string $caseId,
-        float $quotedAmount,
-        float $benchmarkPrice
+        array $lineItems
     ) {
-        if ($quotedAmount <= 0) {
-            throw new \InvalidArgumentException("Quoted amount must be greater than zero.");
-        }
-
-        if ($benchmarkPrice <= 0) {
-            throw new \InvalidArgumentException("Benchmark price must be greater than zero.");
+        if (count($lineItems) === 0) {
+            throw new \InvalidArgumentException("Supplier quote must contain at least one valid line item.");
         }
 
         $this->quoteId = $quoteId;
         $this->supplierId = $supplierId;
         $this->caseId = $caseId;
-        $this->quotedAmount = $quotedAmount;
-        $this->benchmarkPrice = $benchmarkPrice;
+        $this->lineItems = array_values($lineItems);
     }
 
     public function getQuoteId(): string
@@ -49,19 +50,39 @@ final class SupplierQuote
         return $this->caseId;
     }
 
+    /**
+     * @return array<int, QuoteLineItem>
+     */
+    public function getLineItems(): array
+    {
+        return $this->lineItems;
+    }
+
     public function getQuotedAmount(): float
     {
-        return $this->quotedAmount;
+        $total = 0.0;
+        foreach ($this->lineItems as $item) {
+            $total += $item->getQuotedPrice();
+        }
+        return $total;
     }
 
     public function getBenchmarkPrice(): float
     {
-        return $this->benchmarkPrice;
+        $total = 0.0;
+        foreach ($this->lineItems as $item) {
+            $total += $item->getBenchmarkOemPrice();
+        }
+        return $total;
     }
 
     public function calculateSavings(): float
     {
-        return max(0.0, $this->benchmarkPrice - $this->quotedAmount);
+        $totalSavings = 0.0;
+        foreach ($this->lineItems as $item) {
+            $totalSavings += $item->calculateSavings();
+        }
+        return $totalSavings;
     }
 
     public function isEligibleForAutoPo(float $minSavingsThreshold = 50.0): bool
