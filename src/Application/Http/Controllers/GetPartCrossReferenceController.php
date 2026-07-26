@@ -12,7 +12,7 @@ final class GetPartCrossReferenceController
 
     /** 
      * Detailed OEM vehicle, year model, and trim spec matrix.
-     * @var array<string, array{make: string, model: string, series: string, yearRange: string, specDetails: string, category: string, description: string}> 
+     * @var array<int|string, array{make: string, model: string, series: string, yearRange: string, specDetails: string, category: string, description: string}> 
      */
     private array $richOemMetadata = [
         'A2058800100' => [
