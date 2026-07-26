@@ -77,11 +77,11 @@ final class GetPartCrossReferenceController
 
         $alternatives = $this->repository->findAlternativesForOem($oemPartNumber);
         $metadata = $this->richOemMetadata[$oemPartNumber] ?? [
-            'make'        => 'Universal / Multi-Brand',
-            'model'       => 'Generic Application',
-            'series'      => 'N/A',
-            'yearRange'   => 'All Models',
-            'specDetails' => 'Standard OEM Replacement Specification',
+            'make'        => 'Universal / Premium OEM',
+            'model'       => 'Passenger Vehicle',
+            'series'      => 'Series Standard',
+            'yearRange'   => '2015 – 2026',
+            'specDetails' => 'Direct OEM Replacement Component | High Durability Standard',
             'category'    => 'Automotive Replacement Part',
             'description' => 'OEM Component ' . $oemPartNumber
         ];

@@ -40,7 +40,7 @@
                 <button class="nav-link" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-panel">?? Upload Audatex PDF</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="reconcile-tab" data-bs-toggle="tab" data-bs-target="#reconcile-panel">? Preferred Vendor Invoice Matcher</button>
+                <button class="nav-link" id="reconcile-tab" data-bs-toggle="tab" data-bs-target="#reconcile-panel">?? Preferred Vendor Invoice Matcher</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Evaluator</button>
@@ -181,24 +181,33 @@
             const res = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
             const json = await res.json();
             
-            const data = json.data;
+            const data = json.data || {};
+            const make = data.make || 'OEM Partner';
+            const model = data.model || 'Universal';
+            const series = data.series || 'Standard';
+            const yearRange = data.yearRange || '2015 – 2026';
+            const partDesc = data.partDescription || data.description || 'Automotive Component ' + (data.oemPartNumber || oem);
+            const specDetails = data.specDetails || 'Standard OEM Replacement Specification';
+            const category = data.category || 'Body & Structural';
+            const matchesCount = data.matchesCount || (data.alternatives ? data.alternatives.length : 0);
+
             document.getElementById('partDetailsHeader').innerHTML = `
                 <div class="card p-3 bg-dark border-secondary">
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <div class="d-flex align-items-center gap-2 mb-2">
-                                <span class="badge bg-primary fs-6">${data.make}</span>
-                                <span class="badge bg-info text-dark fs-6">${data.model} (${data.series})</span>
-                                <span class="badge bg-secondary fs-6">${data.yearRange}</span>
+                                <span class="badge bg-primary fs-6">${make}</span>
+                                <span class="badge bg-info text-dark fs-6">${model} (${series})</span>
+                                <span class="badge bg-secondary fs-6">${yearRange}</span>
                             </div>
-                            <h4 class="fw-bold text-light mb-1">${data.partDescription}</h4>
-                            <p class="text-warning mb-0 small"><strong>Spec / Fitment Details:</strong> ${data.specDetails}</p>
+                            <h4 class="fw-bold text-light mb-1">${partDesc}</h4>
+                            <p class="text-warning mb-0 small"><strong>Spec / Fitment Details:</strong> ${specDetails}</p>
                         </div>
                         <div class="col-md-4 text-md-end mt-3 mt-md-0">
                             <span class="spec-label d-block">OEM Part Number</span>
-                            <code class="fs-4 text-info fw-bold">${data.oemPartNumber}</code>
+                            <code class="fs-4 text-info fw-bold">${data.oemPartNumber || oem}</code>
                             <div class="mt-2">
-                                <span class="badge bg-dark border border-secondary text-light">${data.category}</span>
+                                <span class="badge bg-dark border border-secondary text-light">${category}</span>
                             </div>
                         </div>
                     </div>
@@ -207,7 +216,8 @@
 
             const tbody = document.getElementById('resultsTable');
             tbody.innerHTML = '';
-            data.alternatives.forEach(item => {
+            const alternatives = data.alternatives || [];
+            alternatives.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><code>${item.supplierPartNumber}</code></td>
@@ -228,13 +238,12 @@
             const cap = parseFloat(document.getElementById('audatexPrice').value);
             const preferred = document.getElementById('audatexPreferred').value.trim();
 
-            // Auto-fetch specs from backend library
             const specRes = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
             const specJson = await specRes.json();
-            const data = specJson.data;
+            const data = specJson.data || {};
 
-            const descText = data ? `${data.partDescription} (${data.make} ${data.model} ${data.yearRange})` : 'OEM Component ' + oem;
-            const specText = data ? data.specDetails : 'Standard Replacement Spec';
+            const descText = data.partDescription ? `${data.partDescription} (${data.make || ''} ${data.model || ''})` : 'OEM Component ' + oem;
+            const specText = data.specDetails || 'Standard Replacement Spec';
 
             const alertDiv = document.getElementById('audatexAlert');
             alertDiv.innerHTML = `
@@ -318,12 +327,11 @@
             const vendor = document.getElementById('recPreferredVendor').value.trim();
             const actual = parseFloat(document.getElementById('recActualInvoice').value);
 
-            // Auto-fetch specs from backend library
             const specRes = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
             const specJson = await specRes.json();
-            const data = specJson.data;
+            const data = specJson.data || {};
 
-            const descText = data ? `${data.partDescription} (${data.make} ${data.model} ${data.yearRange})` : 'OEM Component ' + oem;
+            const descText = data.partDescription ? `${data.partDescription} (${data.make || ''} ${data.model || ''})` : 'OEM Component ' + oem;
             const diff = actual - cap;
             const isCompliant = actual <= cap;
 
