@@ -23,8 +23,11 @@ final class AudatexWebhookController
      */
     public function handleIngest(array $requestData): array
     {
-        $rawText = (string) ($requestData['rawText'] ?? $requestData['content'] ?? '');
-        $preferredSupplier = isset($requestData['preferredSupplier']) ? (string) $requestData['preferredSupplier'] : null;
+        $rawInput = $requestData['rawText'] ?? $requestData['content'] ?? '';
+        $rawText = is_string($rawInput) ? $rawInput : '';
+
+        $preferredInput = $requestData['preferredSupplier'] ?? null;
+        $preferredSupplier = is_string($preferredInput) ? $preferredInput : null;
 
         $result = $this->parserService->parseAndEvaluateClaim($rawText, $preferredSupplier);
 
