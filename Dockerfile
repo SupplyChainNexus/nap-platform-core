@@ -8,7 +8,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Stage 2: Runtime stage
-FROM php:8.3-cli-alpine
+FROM php:8.3-fpm-alpine
 
 # Install SQLite dependencies and extension
 RUN apk add --no-cache sqlite-dev \
