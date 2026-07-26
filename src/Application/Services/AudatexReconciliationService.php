@@ -6,13 +6,6 @@ namespace NAP\Application\Services;
 
 final class AudatexReconciliationService
 {
-    private AudatexClaimEvaluator $evaluator;
-
-    public function __construct(AudatexClaimEvaluator $evaluator)
-    {
-        $this->evaluator = $evaluator;
-    }
-
     /**
      * Reconciles a repairer's preferred vendor invoice against the original Audatex estimate.
      *
