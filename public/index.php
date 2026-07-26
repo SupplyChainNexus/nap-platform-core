@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use NAP\Application\Commands\IngestAudatexClaimHandler;
+use NAP\Application\Services\CatalogScraperAgent;
 use NAP\Application\Services\PartLookupService;
 use NAP\Infrastructure\Cache\ArrayCacheDriver;
 use NAP\Infrastructure\Health\HealthCheckRegistry;
@@ -57,16 +58,7 @@ if ($uri === '/api/v1/claims/ingest' && $method === 'POST') {
     exit;
 }
 
-// Route 3: Cached Dashboard Metrics Summary
-if ($uri === '/api/v1/dashboard/summary' && $method === 'GET') {
-    $innerController = new DashboardController($db);
-    $controller = new CachedDashboardController($innerController, $cache);
-
-    echo $controller->getExecutiveSummary();
-    exit;
-}
-
-// Route 4: OEM Part Cross-Referencing
+// Route 3: OEM Part Cross-Referencing
 if ($uri === '/api/v1/parts/cross-reference' && $method === 'GET') {
     $repository = new PartCrossReferenceRepository($db);
     $lookupService = new PartLookupService($repository);
@@ -74,6 +66,19 @@ if ($uri === '/api/v1/parts/cross-reference' && $method === 'GET') {
 
     $response = $controller->handle($_GET);
     echo JsonResponse::create($response['body'], $response['status_code']);
+    exit;
+}
+
+// Route 4: Scraper Worker Status & Logs Monitoring
+if ($uri === '/api/v1/agent/status' && $method === 'GET') {
+    $logFile = '/var/log/worker.log';
+    $logs = file_exists($logFile) ? file_get_contents($logFile) : "Worker log file not initialized yet.";
+
+    echo JsonResponse::create([
+        "status" => "success",
+        "worker_mode" => "embedded_background_thread",
+        "recent_logs" => array_slice(explode("\n", (string) $logs), -20)
+    ], 200);
     exit;
 }
 

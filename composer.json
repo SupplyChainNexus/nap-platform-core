@@ -24,6 +24,7 @@
                                              "@composer dump-autoload -o"
                                          ],
                     "agent:scrape":  "php -d extension=pdo_sqlite bin/run-scraper-agent.php",
-                    "agent:worker":  "php -d extension=pdo_sqlite bin/worker-scraper-agent.php"
+                    "agent:worker":  "php -d extension=pdo_sqlite bin/worker-scraper-agent.php",
+                    "start:app":  "sh bin/start-with-worker.sh php -S 0.0.0.0:8080 -t public"
                 }
 }
