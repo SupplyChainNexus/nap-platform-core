@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 declare(strict_types=1);
 
@@ -12,7 +12,7 @@ final class GetPartCrossReferenceController
 
     /** 
      * Detailed OEM vehicle, year model, and trim spec matrix.
-     * @var array<string, array{make: string, model: string, series: string, yearRange: string, specDetails: string, category: string, description: string}> 
+     * @var array<int|string, array{make: string, model: string, series: string, yearRange: string, specDetails: string, category: string, description: string}> 
      */
     private array $richOemMetadata = [
         'A2058800100' => [
@@ -77,10 +77,9 @@ final class GetPartCrossReferenceController
 
         $alternatives = $this->repository->findAlternativesForOem($oemPartNumber);
         
-        // Key lookup with explicit string matching
         $metadata = null;
         foreach ($this->richOemMetadata as $key => $data) {
-            if (strtoupper((string)$key) === $oemPartNumber) {
+            if (strtoupper((string) $key) === $oemPartNumber) {
                 $metadata = $data;
                 break;
             }
