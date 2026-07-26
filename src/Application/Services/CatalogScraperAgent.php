@@ -62,7 +62,7 @@ final class CatalogScraperAgent
                 $oemString = (string) $oemPart;
                 $supplierPartNum = 'ALT-' . strtoupper(substr(md5($oemString . $brandName), 0, 8));
 
-                $this->repository->addCrossReference($oemString, $supplierPartNum, $brandName, $quotedPrice);
+                $this->repository->recordMapping($oemString, $supplierPartNum, $brandName, $quotedPrice);
                 $addedCount++;
             }
         }
