@@ -10,6 +10,7 @@ final class AudatexReconciliationService
      * Reconciles a repairer's preferred vendor invoice against the original Audatex estimate.
      *
      * @param string $oemPartNumber
+     * @param string $partDescription
      * @param float $audatexAuthorisedCap
      * @param string $audatexAssignedSupplier
      * @param string $repairerPreferredSupplier
@@ -18,6 +19,7 @@ final class AudatexReconciliationService
      */
     public function reconcilePreferredPurchase(
         string $oemPartNumber,
+        string $partDescription,
         float $audatexAuthorisedCap,
         string $audatexAssignedSupplier,
         string $repairerPreferredSupplier,
@@ -35,6 +37,7 @@ final class AudatexReconciliationService
 
         return [
             'oemPartNumber'               => strtoupper(trim($oemPartNumber)),
+            'partDescription'             => trim($partDescription),
             'audatexAssignedSupplier'     => trim($audatexAssignedSupplier),
             'audatexAuthorisedCap'        => $audatexAuthorisedCap,
             'repairerPreferredSupplier'   => trim($repairerPreferredSupplier),
@@ -43,8 +46,8 @@ final class AudatexReconciliationService
             'isInsuranceApproved'         => $isCompliantWithInsurance,
             'reconciliationStatus'        => $marginStatus,
             'auditNote'                   => $isCompliantWithInsurance
-                ? sprintf("Invoice from %s (R %.2f) is within Audatex cap (R %.2f). Approved for job closure.", $repairerPreferredSupplier, $preferredSupplierActualPrice, $audatexAuthorisedCap)
-                : sprintf("CRITICAL: %s quoted R %.2f, exceeding Audatex cap of R %.2f by R %.2f. Requires price match adjustment.", $repairerPreferredSupplier, $preferredSupplierActualPrice, $audatexAuthorisedCap, $priceDifference)
+                ? sprintf("Invoice from %s for '%s' (R %.2f) is within Audatex cap (R %.2f). Approved for job closure.", $repairerPreferredSupplier, $partDescription, $preferredSupplierActualPrice, $audatexAuthorisedCap)
+                : sprintf("CRITICAL: %s quoted R %.2f for '%s', exceeding Audatex cap of R %.2f by R %.2f. Requires price match adjustment.", $repairerPreferredSupplier, $preferredSupplierActualPrice, $partDescription, $audatexAuthorisedCap, $priceDifference)
         ];
     }
 }

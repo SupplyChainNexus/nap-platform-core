@@ -48,7 +48,7 @@
                     <h5 class="fw-bold mb-3">Search Universal OEM Parts</h5>
                     <form id="searchForm" class="row g-3">
                         <div class="col-md-9">
-                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" required>
+                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" placeholder="OEM Part Number" required>
                         </div>
                         <div class="col-md-3">
                             <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Find Alternatives</button>
@@ -73,15 +73,19 @@
                 <div class="card p-4 mb-4 shadow-lg">
                     <h5 class="fw-bold mb-3">Audatex Price Cap Evaluator</h5>
                     <form id="audatexForm" class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-secondary">OEM Part #</label>
                             <input type="text" id="audatexOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Part Description</label>
+                            <input type="text" id="audatexDesc" class="form-control bg-dark text-light border-secondary" value="Front Bumper Bracket / Mount" required>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label text-secondary">Audatex Authorised Price (ZAR)</label>
                             <input type="number" step="0.01" id="audatexPrice" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-secondary">Preferred Supplier</label>
                             <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" value="Goldwagen">
                         </div>
@@ -103,6 +107,10 @@
                             <input type="text" id="recOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
                         </div>
                         <div class="col-md-3">
+                            <label class="form-label text-secondary">Part Description</label>
+                            <input type="text" id="recDesc" class="form-control bg-dark text-light border-secondary" value="Grille Support Bracket Assembly" required>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label text-secondary">Audatex Assigned Vendor</label>
                             <input type="text" id="recAudatexVendor" class="form-control bg-dark text-light border-secondary" value="Authorized Dealer" required>
                         </div>
@@ -110,15 +118,15 @@
                             <label class="form-label text-secondary">Audatex Cap (ZAR)</label>
                             <input type="number" step="0.01" id="recAudatexCap" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">Repairer Preferred Vendor</label>
-                            <input type="text" id="recPreferredVendor" class="form-control bg-dark text-light border-secondary" value="Goldwagen B2B" required>
+                            <input type="text" id="recPreferredVendor" class="form-control bg-dark text-light border-secondary" value="M5 Auto Parts" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">Preferred Vendor Actual Invoice (ZAR)</label>
                             <input type="number" step="0.01" id="recActualInvoice" class="form-control bg-dark text-light border-secondary" value="3250.00" required>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
+                        <div class="col-md-4 d-flex align-items-end">
                             <button type="submit" class="btn btn-info btn-lg w-100 fw-bold text-dark">Validate Invoice Compliance</button>
                         </div>
                     </form>
@@ -160,6 +168,7 @@
         document.getElementById('reconcileForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const oem = document.getElementById('recOem').value.trim();
+            const desc = document.getElementById('recDesc').value.trim();
             const cap = parseFloat(document.getElementById('recAudatexCap').value);
             const vendor = document.getElementById('recPreferredVendor').value.trim();
             const actual = parseFloat(document.getElementById('recActualInvoice').value);
@@ -170,8 +179,8 @@
             alertDiv.innerHTML = `
                 <div class="alert ${isCompliant ? 'alert-success' : 'alert-danger'} bg-dark border-secondary text-light mb-0">
                     <h5 class="fw-bold mb-2">${isCompliant ? '? Insurance Compliance Approved' : '?? Price Cap Exceeded Risk'}</h5>
-                    <p class="mb-1"><strong>OEM Part:</strong> ${oem} | <strong>Preferred Vendor:</strong> ${vendor}</p>
-                    <p class="mb-1"><strong>Audatex Authorised Allowance:</strong> R ${cap.toFixed(2)}</p>
+                    <p class="mb-1"><strong>OEM Part:</strong> ${oem} | <strong>Description:</strong> <span class="text-info fw-bold">${desc}</span></p>
+                    <p class="mb-1"><strong>Preferred Vendor:</strong> ${vendor} | <strong>Audatex Authorised Allowance:</strong> R ${cap.toFixed(2)}</p>
                     <p class="mb-1"><strong>Preferred Vendor Invoice:</strong> R ${actual.toFixed(2)}</p>
                     <p class="mb-0 fw-bold ${isCompliant ? 'text-success' : 'text-danger'}">
                         Variance: ${diff <= 0 ? '-' : '+'}R ${Math.abs(diff).toFixed(2)} 
