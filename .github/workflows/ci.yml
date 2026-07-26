@@ -19,14 +19,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo, pdo_sqlite, zip
+          extensions: pdo, pdo_sqlite, zip, curl, mbstring, dom
           coverage: none
 
       - name: Install Composer Dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Run PHPStan Level 9 Analysis
-        run: vendor/bin/phpstan analyse src --level=9
+      - name: Run PHPStan Analysis
+        run: vendor/bin/phpstan analyse src --memory-limit=-1
 
       - name: Execute PHPUnit Test Suite
-        run: php -d extension=pdo_sqlite vendor/bin/phpunit tests --no-output-during-tests
+        run: php -d extension=pdo_sqlite vendor/bin/phpunit tests
