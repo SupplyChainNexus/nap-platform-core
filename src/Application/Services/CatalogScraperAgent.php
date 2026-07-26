@@ -10,7 +10,7 @@ final class CatalogScraperAgent
 {
     private PartCrossReferenceRepository $repository;
 
-    /** @var array<string, array<int, string>> */
+    /** @var array<int|string, array<int, string>> */
     private array $oemTargets = [
         'A2058800100' => ['Mercedes-Benz', 'Bumper Bracket / Grille Support'],
         '34116858652' => ['BMW', 'Brake Disc Front Pair'],
@@ -59,9 +59,10 @@ final class CatalogScraperAgent
                 $pricing = $this->knownAftermarketBrands[$brandName];
                 $quotedPrice = round(rand((int) $pricing['min'], (int) $pricing['max']) + (rand(0, 99) / 100), 2);
                 
-                $supplierPartNum = 'ALT-' . strtoupper(substr(md5($oemPart . $brandName), 0, 8));
+                $oemString = (string) $oemPart;
+                $supplierPartNum = 'ALT-' . strtoupper(substr(md5($oemString . $brandName), 0, 8));
 
-                $this->repository->saveCrossReference($oemPart, $supplierPartNum, $brandName, $quotedPrice);
+                $this->repository->recordAlternative($oemString, $supplierPartNum, $brandName, $quotedPrice);
                 $addedCount++;
             }
         }
