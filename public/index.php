@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use NAP\Application\Commands\IngestAudatexClaimHandler;
+use NAP\Application\Services\PartLookupService;
 use NAP\Infrastructure\Cache\ArrayCacheDriver;
 use NAP\Infrastructure\Health\HealthCheckRegistry;
 use NAP\Infrastructure\Http\Controllers\CachedDashboardController;
@@ -12,6 +13,7 @@ use NAP\Infrastructure\Http\Controllers\ClaimIngestController;
 use NAP\Infrastructure\Http\Controllers\DashboardController;
 use NAP\Infrastructure\Http\Controllers\HealthController;
 use NAP\Infrastructure\Http\Controllers\PartCrossReferenceController;
+use NAP\Infrastructure\Http\JsonResponse;
 use NAP\Infrastructure\Persistence\DatabaseAdapter;
 use NAP\Infrastructure\Persistence\PartCrossReferenceRepository;
 use NAP\Infrastructure\Security\IdempotencyGuard;
@@ -66,10 +68,12 @@ if ($uri === '/api/v1/dashboard/summary' && $method === 'GET') {
 
 // Route 4: OEM Part Cross-Referencing
 if ($uri === '/api/v1/parts/cross-reference' && $method === 'GET') {
-    $repository = new PartCrossReferenceRepository($pdo);
-    $controller = new PartCrossReferenceController($repository);
+    $repository = new PartCrossReferenceRepository($db);
+    $lookupService = new PartLookupService($repository);
+    $controller = new PartCrossReferenceController($lookupService);
 
-    echo $controller->handle($_GET);
+    $response = $controller->handle($_GET);
+    echo JsonResponse::create($response['body'], $response['status_code']);
     exit;
 }
 
