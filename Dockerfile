@@ -3,30 +3,30 @@ FROM php:8.3-cli-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies & PHP extensions
+# Install system dependencies & SQLite extension
 RUN apk add --no-cache sqlite-dev libpng-dev libzip-dev \
     && docker-php-ext-install pdo pdo_sqlite zip
 
-# Copy Composer binary
+# Copy Composer binary from official image
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
-# Copy application manifests & source
+# Copy application manifest & source
 COPY composer.json composer.lock ./
 COPY src/ ./src/
 
-# Install production dependencies
+# Install production dependencies & dump optimized classmap
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 # --- Stage 2: Runtime Environment ---
-FROM php:8.3-cli-alpine
+FROM php:8.3-fpm-alpine
 
 WORKDIR /var/www/html
 
-# Install runtime dependencies & PHP extensions
+# Install runtime dependencies & extensions
 RUN apk add --no-cache sqlite-dev \
     && docker-php-ext-install pdo pdo_sqlite
 
-# Copy application from builder stage
+# Copy built vendor and application source from builder stage
 COPY --from=builder /app/vendor ./vendor
 COPY src/ ./src/
 COPY public/ ./public/
