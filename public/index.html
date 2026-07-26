@@ -40,7 +40,7 @@
                 <button class="nav-link" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-panel">?? Upload Audatex PDF</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="reconcile-tab" data-bs-toggle="tab" data-bs-target="#reconcile-panel">?? Preferred Vendor Invoice Matcher</button>
+                <button class="nav-link" id="reconcile-tab" data-bs-toggle="tab" data-bs-target="#reconcile-panel">? Preferred Vendor Invoice Matcher</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Evaluator</button>
@@ -51,10 +51,10 @@
             <!-- TAB: SEARCH -->
             <div class="tab-pane fade show active" id="search-panel">
                 <div class="card p-4 mb-4 shadow-lg">
-                    <h5 class="fw-bold mb-3">Search OEM Part (Deep Vehicle & Spec Intelligence)</h5>
+                    <h5 class="fw-bold mb-3">Search OEM Part (Automatic Vehicle & Spec Lookup)</h5>
                     <form id="searchForm" class="row g-3">
                         <div class="col-md-9">
-                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" placeholder="Enter OEM Part # (e.g. A2058800100, 51117292101, A2059060002)" required>
+                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" placeholder="Enter OEM Part #" required>
                         </div>
                         <div class="col-md-3">
                             <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Lookup Part Specs</button>
@@ -110,14 +110,11 @@
             <div class="tab-pane fade" id="reconcile-panel">
                 <div class="card p-4 mb-4 shadow-lg">
                     <h5 class="fw-bold mb-3">Reconcile Preferred Vendor Invoice vs Audatex Cap</h5>
+                    <p class="text-secondary small">Enter the OEM Part Number and financial details—the system automatically resolves description and vehicle specs from the library.</p>
                     <form id="reconcileForm" class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label text-secondary">OEM Part #</label>
                             <input type="text" id="recOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Part Description & Specs</label>
-                            <input type="text" id="recDesc" class="form-control bg-dark text-light border-secondary" value="C-Class W205 Front Bumper Bracket (AMG Line)" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label text-secondary">Audatex Assigned Vendor</label>
@@ -127,15 +124,15 @@
                             <label class="form-label text-secondary">Audatex Cap (ZAR)</label>
                             <input type="number" step="0.01" id="recAudatexCap" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-secondary">Repairer Preferred Vendor</label>
                             <input type="text" id="recPreferredVendor" class="form-control bg-dark text-light border-secondary" value="M5 Auto Parts" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label text-secondary">Preferred Vendor Actual Invoice (ZAR)</label>
                             <input type="number" step="0.01" id="recActualInvoice" class="form-control bg-dark text-light border-secondary" value="3250.00" required>
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
+                        <div class="col-md-6 d-flex align-items-end">
                             <button type="submit" class="btn btn-info btn-lg w-100 fw-bold text-dark">Validate Invoice Compliance</button>
                         </div>
                     </form>
@@ -149,20 +146,17 @@
             <div class="tab-pane fade" id="audatex-panel">
                 <div class="card p-4 mb-4 shadow-lg">
                     <h5 class="fw-bold mb-3">Audatex Price Cap Evaluator</h5>
+                    <p class="text-secondary small">Enter the OEM Part Number and allowance—descriptions and vehicle fitment specs are automatically pulled from the library.</p>
                     <form id="audatexForm" class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">OEM Part #</label>
                             <input type="text" id="audatexOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Part Description & Specs</label>
-                            <input type="text" id="audatexDesc" class="form-control bg-dark text-light border-secondary" value="Front Bumper Bracket (W205 2015-2021)" required>
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">Audatex Authorised Price (ZAR)</label>
                             <input type="number" step="0.01" id="audatexPrice" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label text-secondary">Preferred Supplier</label>
                             <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" value="Goldwagen">
                         </div>
@@ -171,13 +165,16 @@
                         </div>
                     </form>
                 </div>
+                <div id="audatexResultCard" class="card p-4 shadow-lg d-none">
+                    <div id="audatexAlert"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Search Form with Rich Specs Display
+        // Search Form
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const oem = document.getElementById('oemInput').value.trim();
@@ -224,7 +221,36 @@
             document.getElementById('resultsCard').classList.remove('d-none');
         });
 
-        // PDF Input Label Update
+        // Audatex Price Cap Evaluator Form
+        document.getElementById('audatexForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oem = document.getElementById('audatexOem').value.trim();
+            const cap = parseFloat(document.getElementById('audatexPrice').value);
+            const preferred = document.getElementById('audatexPreferred').value.trim();
+
+            // Auto-fetch specs from backend library
+            const specRes = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
+            const specJson = await specRes.json();
+            const data = specJson.data;
+
+            const descText = data ? `${data.partDescription} (${data.make} ${data.model} ${data.yearRange})` : 'OEM Component ' + oem;
+            const specText = data ? data.specDetails : 'Standard Replacement Spec';
+
+            const alertDiv = document.getElementById('audatexAlert');
+            alertDiv.innerHTML = `
+                <div class="alert alert-info bg-dark border-secondary text-light mb-0">
+                    <h5 class="fw-bold mb-2">?? Price Cap Evaluation Summary</h5>
+                    <p class="mb-1"><strong>OEM Part #:</strong> ${oem}</p>
+                    <p class="mb-1"><strong>Auto-Resolved Description:</strong> <span class="text-info fw-bold">${descText}</span></p>
+                    <p class="mb-1"><strong>Fitment Specs:</strong> <span class="text-warning">${specText}</span></p>
+                    <p class="mb-1"><strong>Audatex Authorised Price Cap:</strong> R ${cap.toFixed(2)}</p>
+                    <p class="mb-0"><strong>Preferred Supplier Target:</strong> ${preferred || 'Any Preferred Partner'}</p>
+                </div>
+            `;
+            document.getElementById('audatexResultCard').classList.remove('d-none');
+        });
+
+        // PDF Upload Form
         document.getElementById('pdfInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -232,7 +258,6 @@
             }
         });
 
-        // PDF Upload Form
         document.getElementById('pdfUploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData();
@@ -286,13 +311,19 @@
         });
 
         // Reconciliation Form
-        document.getElementById('reconcileForm').addEventListener('submit', (e) => {
+        document.getElementById('reconcileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const oem = document.getElementById('recOem').value.trim();
-            const desc = document.getElementById('recDesc').value.trim();
             const cap = parseFloat(document.getElementById('recAudatexCap').value);
             const vendor = document.getElementById('recPreferredVendor').value.trim();
             const actual = parseFloat(document.getElementById('recActualInvoice').value);
+
+            // Auto-fetch specs from backend library
+            const specRes = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
+            const specJson = await specRes.json();
+            const data = specJson.data;
+
+            const descText = data ? `${data.partDescription} (${data.make} ${data.model} ${data.yearRange})` : 'OEM Component ' + oem;
             const diff = actual - cap;
             const isCompliant = actual <= cap;
 
@@ -300,7 +331,7 @@
             alertDiv.innerHTML = `
                 <div class="alert ${isCompliant ? 'alert-success' : 'alert-danger'} bg-dark border-secondary text-light mb-0">
                     <h5 class="fw-bold mb-2">${isCompliant ? '? Insurance Compliance Approved' : '?? Price Cap Exceeded Risk'}</h5>
-                    <p class="mb-1"><strong>OEM Part:</strong> ${oem} | <strong>Description & Specs:</strong> <span class="text-info fw-bold">${desc}</span></p>
+                    <p class="mb-1"><strong>OEM Part #:</strong> ${oem} | <strong>Auto-Resolved Specs:</strong> <span class="text-info fw-bold">${descText}</span></p>
                     <p class="mb-1"><strong>Preferred Vendor:</strong> ${vendor} | <strong>Audatex Authorised Allowance:</strong> R ${cap.toFixed(2)}</p>
                     <p class="mb-1"><strong>Preferred Vendor Invoice:</strong> R ${actual.toFixed(2)}</p>
                     <p class="mb-0 fw-bold ${isCompliant ? 'text-success' : 'text-danger'}">
