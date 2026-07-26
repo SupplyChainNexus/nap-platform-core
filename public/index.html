@@ -23,51 +23,43 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold mb-0">NAP Platform Core Operations</h2>
-                <p class="text-secondary mb-0">Automotive Intelligence Engine & Real-Time Scraper</p>
-                <small class="text-muted">Features: Ingest Audatex Claim Webhook | OEM Part Cross-Referencing</small>
+                <p class="text-secondary mb-0">Automotive Procurement Intelligence & Audatex Reconciliation</p>
             </div>
-            <a href="/api/v1/agent/status" target="_blank" class="btn btn-outline-info btn-sm">?? View Worker Status</a>
+            <a href="/api/v1/agent/status" target="_blank" class="btn btn-outline-info btn-sm">?? View Scraper Worker</a>
         </div>
 
         <ul class="nav nav-tabs mb-4" id="mainTabs">
             <li class="nav-item">
-                <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-panel">?? Universal OEM Cross-Reference</button>
+                <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-panel">?? OEM Cross-Reference</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Price Cap Evaluator</button>
+                <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Evaluator</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="reconcile-tab" data-bs-toggle="tab" data-bs-target="#reconcile-panel">?? Preferred Vendor Invoice Matcher</button>
             </li>
         </ul>
 
         <div class="tab-content">
-            <!-- TAB 1: SEARCH CROSS REFERENCE -->
+            <!-- TAB 1: SEARCH -->
             <div class="tab-pane fade show active" id="search-panel">
                 <div class="card p-4 mb-4 shadow-lg">
-                    <h5 class="fw-bold mb-3">Search Universal OEM Parts (Body, Suspension, Engine, Lamps)</h5>
+                    <h5 class="fw-bold mb-3">Search Universal OEM Parts</h5>
                     <form id="searchForm" class="row g-3">
                         <div class="col-md-9">
-                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" placeholder="Enter OEM Part # (e.g. A2058800100, A2059060002, 31126852991)" value="A2058800100" required>
+                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" required>
                         </div>
                         <div class="col-md-3">
                             <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Find Alternatives</button>
                         </div>
                     </form>
                 </div>
-
                 <div id="resultsCard" class="card p-4 shadow-lg d-none">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold mb-0">Results for OEM: <span id="oemLabel" class="text-info"></span></h5>
-                        <span id="matchBadge" class="badge bg-success fs-6"></span>
-                    </div>
+                    <h5 class="fw-bold mb-3">Supplier Options Found: <span id="oemLabel" class="text-info"></span></h5>
                     <div class="table-responsive">
                         <table class="table table-custom mb-0">
                             <thead>
-                                <tr>
-                                    <th>Supplier Part #</th>
-                                    <th>Brand / Supplier</th>
-                                    <th>Quoted Price (ZAR)</th>
-                                    <th>Scrape Hits</th>
-                                    <th>Last Verified</th>
-                                </tr>
+                                <tr><th>Supplier SKU</th><th>Brand</th><th>Price (ZAR)</th><th>Scrape Hits</th><th>Last Verified</th></tr>
                             </thead>
                             <tbody id="resultsTable"></tbody>
                         </table>
@@ -75,13 +67,13 @@
                 </div>
             </div>
 
-            <!-- TAB 2: AUDATEX CLAIM EVALUATOR -->
+            <!-- TAB 2: AUDATEX EVALUATOR -->
             <div class="tab-pane fade" id="audatex-panel">
                 <div class="card p-4 mb-4 shadow-lg">
-                    <h5 class="fw-bold mb-3">Evaluate Audatex Claim Item against Preferred Supplier Price Caps</h5>
+                    <h5 class="fw-bold mb-3">Audatex Price Cap Evaluator</h5>
                     <form id="audatexForm" class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label text-secondary">OEM Part Number</label>
+                            <label class="form-label text-secondary">OEM Part #</label>
                             <input type="text" id="audatexOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
                         </div>
                         <div class="col-md-4">
@@ -89,31 +81,50 @@
                             <input type="number" step="0.01" id="audatexPrice" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label text-secondary">Preferred Supplier (Optional)</label>
-                            <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" placeholder="e.g. Goldwagen, Blic, Hella">
+                            <label class="form-label text-secondary">Preferred Supplier</label>
+                            <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" value="Goldwagen">
                         </div>
                         <div class="col-12 text-end">
-                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">Evaluate Claim Margin</button>
+                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">Evaluate Price Cap</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB 3: INVOICE RECONCILIATION -->
+            <div class="tab-pane fade" id="reconcile-panel">
+                <div class="card p-4 mb-4 shadow-lg">
+                    <h5 class="fw-bold mb-3">Reconcile Preferred Vendor Invoice vs Audatex Cap</h5>
+                    <p class="text-secondary small">Verify that the repairer's preferred vendor quote matches or beats the Audatex authorised allowance before closing the paperwork.</p>
+                    <form id="reconcileForm" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">OEM Part #</label>
+                            <input type="text" id="recOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Audatex Assigned Vendor</label>
+                            <input type="text" id="recAudatexVendor" class="form-control bg-dark text-light border-secondary" value="Authorized Dealer" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Audatex Cap (ZAR)</label>
+                            <input type="number" step="0.01" id="recAudatexCap" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Repairer Preferred Vendor</label>
+                            <input type="text" id="recPreferredVendor" class="form-control bg-dark text-light border-secondary" value="Goldwagen B2B" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Preferred Vendor Actual Invoice (ZAR)</label>
+                            <input type="number" step="0.01" id="recActualInvoice" class="form-control bg-dark text-light border-secondary" value="3250.00" required>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-info btn-lg w-100 fw-bold text-dark">Validate Invoice Compliance</button>
                         </div>
                     </form>
                 </div>
 
-                <div id="audatexResultCard" class="card p-4 shadow-lg d-none">
-                    <div id="claimHeader" class="mb-3"></div>
-                    <div class="table-responsive">
-                        <table class="table table-custom mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Supplier / Brand</th>
-                                    <th>Supplier Part #</th>
-                                    <th>Quoted Price</th>
-                                    <th>Variance vs Authorised Cap</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="audatexTable"></tbody>
-                        </table>
-                    </div>
+                <div id="reconcileResultCard" class="card p-4 shadow-lg d-none">
+                    <div id="reconcileAlert"></div>
                 </div>
             </div>
         </div>
@@ -121,21 +132,15 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // TAB 1: Search Form
+        // TAB 1 Search
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const oem = document.getElementById('oemInput').value.trim();
-            if (!oem) return;
-
             const res = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
             const json = await res.json();
-
             document.getElementById('oemLabel').textContent = json.data.oemPartNumber;
-            document.getElementById('matchBadge').textContent = `${json.data.matchesCount} Alternatives Found`;
-
             const tbody = document.getElementById('resultsTable');
             tbody.innerHTML = '';
-
             json.data.alternatives.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -147,66 +152,35 @@
                 `;
                 tbody.appendChild(tr);
             });
-
             document.getElementById('resultsCard').classList.remove('d-none');
         });
 
-        // TAB 2: Audatex Claim Evaluator Form
-        document.getElementById('audatexForm').addEventListener('submit', async (e) => {
+        // TAB 3 Reconciliation
+        document.getElementById('reconcileForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const oem = document.getElementById('audatexOem').value.trim();
-            const price = parseFloat(document.getElementById('audatexPrice').value);
-            const pref = document.getElementById('audatexPreferred').value.trim();
+            const oem = document.getElementById('recOem').value.trim();
+            const cap = parseFloat(document.getElementById('recAudatexCap').value);
+            const vendor = document.getElementById('recPreferredVendor').value.trim();
+            const actual = parseFloat(document.getElementById('recActualInvoice').value);
+            const diff = actual - cap;
+            const isCompliant = actual <= cap;
 
-            const res = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
-            const json = await res.json();
-
-            const headerDiv = document.getElementById('claimHeader');
-            const tbody = document.getElementById('audatexTable');
-            tbody.innerHTML = '';
-
-            let compliantCount = 0;
-            let overCapCount = 0;
-
-            json.data.alternatives.forEach(item => {
-                const quotePrice = parseFloat(item.lastQuotedPrice);
-                const diff = quotePrice - price;
-                const isCompliant = quotePrice <= price;
-
-                if (isCompliant) compliantCount++;
-                else overCapCount++;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><span class="badge badge-brand">${item.brandName}</span></td>
-                    <td><code>${item.supplierPartNumber}</code></td>
-                    <td>R ${quotePrice.toFixed(2)}</td>
-                    <td class="${diff <= 0 ? 'text-success' : 'text-danger'} fw-bold">
-                        ${diff <= 0 ? '-' : '+'}R ${Math.abs(diff).toFixed(2)}
-                    </td>
-                    <td>
-                        <span class="badge ${isCompliant ? 'badge-price-ok' : 'badge-price-over'}">
-                            ${isCompliant ? '? Within Cap (Approved)' : '?? Over Authorised Price'}
-                        </span>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            headerDiv.innerHTML = `
-                <div class="alert ${compliantCount > 0 ? 'alert-success' : 'alert-danger'} bg-dark border-secondary text-light">
-                    <h5 class="fw-bold mb-1">Audatex Claim Analysis for OEM: ${json.data.oemPartNumber}</h5>
-                    <p class="mb-0">Authorised Price Cap: <strong>R ${price.toFixed(2)}</strong> | 
-                       Compliant Options: <span class="badge bg-success">${compliantCount}</span> | 
-                       Over-Cap Options: <span class="badge bg-danger">${overCapCount}</span>
+            const alertDiv = document.getElementById('reconcileAlert');
+            alertDiv.innerHTML = `
+                <div class="alert ${isCompliant ? 'alert-success' : 'alert-danger'} bg-dark border-secondary text-light mb-0">
+                    <h5 class="fw-bold mb-2">${isCompliant ? '? Insurance Compliance Approved' : '?? Price Cap Exceeded Risk'}</h5>
+                    <p class="mb-1"><strong>OEM Part:</strong> ${oem} | <strong>Preferred Vendor:</strong> ${vendor}</p>
+                    <p class="mb-1"><strong>Audatex Authorised Allowance:</strong> R ${cap.toFixed(2)}</p>
+                    <p class="mb-1"><strong>Preferred Vendor Invoice:</strong> R ${actual.toFixed(2)}</p>
+                    <p class="mb-0 fw-bold ${isCompliant ? 'text-success' : 'text-danger'}">
+                        Variance: ${diff <= 0 ? '-' : '+'}R ${Math.abs(diff).toFixed(2)} 
+                        ${isCompliant ? '(Safe to attach invoice & close claim paperwork)' : '(Requires vendor price reduction to match cap)'}
                     </p>
                 </div>
             `;
-
-            document.getElementById('audatexResultCard').classList.remove('d-none');
+            document.getElementById('reconcileResultCard').classList.remove('d-none');
         });
 
-        // Auto-search default on page load
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('searchForm').dispatchEvent(new Event('submit'));
         });
