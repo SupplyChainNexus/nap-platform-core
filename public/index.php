@@ -16,11 +16,21 @@ header('Content-Type: application/json; charset=utf-8');
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-$dbPath = __DIR__ . '/../database/nap_platform.sqlite';
-$pdo = new PDO('sqlite:' . $dbPath);
+// Ensure database directory exists and is writable
+$dbDir = __DIR__ . '/../database';
+if (!is_dir($dbDir)) {
+    @mkdir($dbDir, 0777, true);
+}
+
+$dbPath = $dbDir . '/nap_platform.sqlite';
+$dsn = is_writable($dbDir) || is_writable(dirname($dbDir)) ? 'sqlite:' . $dbPath : 'sqlite::memory:';
+
+$pdo = new PDO($dsn);
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $dbAdapter = new DatabaseAdapter($pdo);
+$dbAdapter->ensureSchema(); // Auto-initialize tables if empty
+
 $repository = new PartCrossReferenceRepository($dbAdapter);
 
 if ($uri === '/' && $method === 'GET') {
