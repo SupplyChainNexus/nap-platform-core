@@ -17,7 +17,10 @@ $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 $dbPath = __DIR__ . '/../database/nap_platform.sqlite';
-$dbAdapter = new DatabaseAdapter('sqlite:' . $dbPath);
+$pdo = new PDO('sqlite:' . $dbPath);
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$dbAdapter = new DatabaseAdapter($pdo);
 $repository = new PartCrossReferenceRepository($dbAdapter);
 
 if ($uri === '/' && $method === 'GET') {
