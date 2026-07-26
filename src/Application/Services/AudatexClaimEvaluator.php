@@ -44,11 +44,11 @@ final class AudatexClaimEvaluator
         $bestCompliantOption = null;
 
         foreach ($alternatives as $alt) {
-            $price = (float) ($alt['lastQuotedPrice'] ?? 0.0);
-            $brand = (string) ($alt['brandName'] ?? '');
+            $price = $alt['lastQuotedPrice'];
+            $brand = $alt['brandName'];
             
             $isCompliant = $price <= $authorizedPrice;
-            $isPreferred = $preferredSupplier !== null && stripos($brand, $preferredSupplier) !== false;
+            $isPreferred = $preferredSupplier !== null && $preferredSupplier !== '' && stripos($brand, $preferredSupplier) !== false;
 
             $enrichedOption = array_merge($alt, [
                 'isCompliantWithCap' => $isCompliant,
@@ -58,7 +58,8 @@ final class AudatexClaimEvaluator
 
             if ($isCompliant) {
                 $compliantOptions[] = $enrichedOption;
-                if ($bestCompliantOption === null || ($isPreferred && !($bestCompliantOption['isPreferredSupplier'] ?? false))) {
+                $currentBestIsPreferred = is_array($bestCompliantOption) && ($bestCompliantOption['isPreferredSupplier'] === true);
+                if ($bestCompliantOption === null || ($isPreferred && !$currentBestIsPreferred)) {
                     $bestCompliantOption = $enrichedOption;
                 }
             } else {
