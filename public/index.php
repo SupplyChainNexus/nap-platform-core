@@ -9,9 +9,11 @@ use NAP\Infrastructure\Cache\ArrayCacheDriver;
 use NAP\Infrastructure\Health\HealthCheckRegistry;
 use NAP\Infrastructure\Http\Controllers\CachedDashboardController;
 use NAP\Infrastructure\Http\Controllers\ClaimIngestController;
-use NAP\Infrastructure\Http\Controllers\HealthController;
 use NAP\Infrastructure\Http\Controllers\DashboardController;
+use NAP\Infrastructure\Http\Controllers\HealthController;
+use NAP\Infrastructure\Http\Controllers\PartCrossReferenceController;
 use NAP\Infrastructure\Persistence\DatabaseAdapter;
+use NAP\Infrastructure\Persistence\PartCrossReferenceRepository;
 use NAP\Infrastructure\Security\IdempotencyGuard;
 
 $pdo = new PDO("sqlite:" . __DIR__ . "/../database.sqlite");
@@ -59,6 +61,15 @@ if ($uri === '/api/v1/dashboard/summary' && $method === 'GET') {
     $controller = new CachedDashboardController($innerController, $cache);
 
     echo $controller->getExecutiveSummary();
+    exit;
+}
+
+// Route 4: OEM Part Cross-Referencing
+if ($uri === '/api/v1/parts/cross-reference' && $method === 'GET') {
+    $repository = new PartCrossReferenceRepository($pdo);
+    $controller = new PartCrossReferenceController($repository);
+
+    echo $controller->handle($_GET);
     exit;
 }
 
