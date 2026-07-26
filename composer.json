@@ -1,27 +1,28 @@
 {
-    "name": "nap/platform-core",
-    "description": "NAP Platform Core Engine",
-    "type": "project",
-    "autoload": {
-        "psr-4": {
-            "NAP\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "NAP\\Tests\\": "tests/"
-        }
-    },
-    "require": {
-        "php": "^8.2"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^10.5",
-        "phpstan/phpstan": "^1.10"
-    },
-    "scripts": {
-        "post-install-cmd": [
-            "@composer dump-autoload -o"
-        ]
-    }
+    "name":  "nap/platform-core",
+    "description":  "NAP Platform Core Engine",
+    "type":  "project",
+    "autoload":  {
+                     "psr-4":  {
+                                   "NAP\\":  "src/"
+                               }
+                 },
+    "autoload-dev":  {
+                         "psr-4":  {
+                                       "NAP\\Tests\\":  "tests/"
+                                   }
+                     },
+    "require":  {
+                    "php":  "^8.2"
+                },
+    "require-dev":  {
+                        "phpunit/phpunit":  "^10.5",
+                        "phpstan/phpstan":  "^1.10"
+                    },
+    "scripts":  {
+                    "post-install-cmd":  [
+                                             "@composer dump-autoload -o"
+                                         ],
+                    "agent:scrape":  "php -d extension=pdo_sqlite bin/run-scraper-agent.php"
+                }
 }
