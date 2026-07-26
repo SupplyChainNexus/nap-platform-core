@@ -11,6 +11,7 @@ final class PartCrossReferenceRepository
     public function __construct(DatabaseAdapter $db)
     {
         $this->db = $db;
+        $this->initializeSchema();
     }
 
     /**
