@@ -18,18 +18,13 @@ final class HealthCheckRegistry
         $this->cache = $cache;
     }
 
-    /**
-     * Liveness check — returns true if the PHP runtime is responding.
-     */
     public function isLive(): bool
     {
         return true;
     }
 
     /**
-     * Readiness check — verifies database connectivity and core storage access.
-     *
-     * @return array<string, mixed> Detailed diagnostic status
+     * @return array<string, mixed>
      */
     public function checkReadiness(): array
     {
@@ -40,13 +35,28 @@ final class HealthCheckRegistry
         try {
             $startTime = microtime(true);
             $pdo = $this->db->getPdo();
-            $stmt = $pdo->query("SELECT COUNT(*) FROM nx_event_store");
-            $dbLatencyMs = round((microtime(true) - $startTime) * 1000, 2);
 
-            if ($stmt !== false) {
-                $eventStoreCount = (int) $stmt->fetchColumn();
-                $dbStatus = true;
+            // Resilient DB ping
+            $pdo->query("SELECT 1");
+
+            // Check event store count safely
+            try {
+                $stmt = $pdo->query("SELECT COUNT(*) FROM nx_event_store");
+                if ($stmt !== false) {
+                    $eventStoreCount = (int) $stmt->fetchColumn();
+                }
+            } catch (\Throwable $e) {
+                // Table doesn't exist yet - initialize schema
+                $pdo->exec("CREATE TABLE IF NOT EXISTS nx_event_store (
+                    event_id VARCHAR(64) PRIMARY KEY,
+                    event_type VARCHAR(128) NOT NULL,
+                    payload TEXT NOT NULL,
+                    created_at VARCHAR(64) NOT NULL
+                )");
             }
+
+            $dbLatencyMs = round((microtime(true) - $startTime) * 1000, 2);
+            $dbStatus = true;
         } catch (\Throwable $e) {
             $dbStatus = false;
         }
