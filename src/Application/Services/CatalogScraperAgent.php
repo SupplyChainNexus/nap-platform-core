@@ -61,7 +61,7 @@ final class CatalogScraperAgent
                 
                 $supplierPartNum = 'ALT-' . strtoupper(substr(md5($oemPart . $brandName), 0, 8));
 
-                $this->repository->saveAlternative($oemPart, $supplierPartNum, $brandName, $quotedPrice);
+                $this->repository->saveCrossReference($oemPart, $supplierPartNum, $brandName, $quotedPrice);
                 $addedCount++;
             }
         }
