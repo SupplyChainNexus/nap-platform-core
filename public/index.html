@@ -16,6 +16,8 @@
         .table-custom td { border-color: #334155; vertical-align: middle; }
         .nav-tabs .nav-link { color: #94a3b8; border: none; }
         .nav-tabs .nav-link.active { background-color: #1e293b; color: #38bdf8; border-bottom: 3px solid #38bdf8; font-weight: bold; }
+        .drop-zone { border: 2px dashed #38bdf8; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .drop-zone:hover { background-color: #0f172a; }
     </style>
 </head>
 <body class="py-5">
@@ -31,76 +33,62 @@
 
         <ul class="nav nav-tabs mb-4" id="mainTabs">
             <li class="nav-item">
-                <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-panel">?? OEM Cross-Reference</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Evaluator</button>
+                <button class="nav-link active" id="pdf-tab" data-bs-toggle="tab" data-bs-target="#pdf-panel">?? Upload Audatex PDF</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="reconcile-tab" data-bs-toggle="tab" data-bs-target="#reconcile-panel">?? Preferred Vendor Invoice Matcher</button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-panel">?? OEM Cross-Reference</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Evaluator</button>
+            </li>
         </ul>
 
         <div class="tab-content">
-            <!-- TAB 1: SEARCH -->
-            <div class="tab-pane fade show active" id="search-panel">
+            <!-- TAB: PDF UPLOAD -->
+            <div class="tab-pane fade show active" id="pdf-panel">
                 <div class="card p-4 mb-4 shadow-lg">
-                    <h5 class="fw-bold mb-3">Search Universal OEM Parts</h5>
-                    <form id="searchForm" class="row g-3">
-                        <div class="col-md-9">
-                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" placeholder="OEM Part Number" required>
+                    <h5 class="fw-bold mb-3">Upload Audatex Claim PDF Estimate</h5>
+                    <p class="text-secondary small">Upload or drag and drop an Audatex claim document (.pdf). The system will extract line items, OEM numbers, descriptions, and authorized price caps automatically.</p>
+                    <form id="pdfUploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label text-secondary">Repairer Preferred Vendor (Optional)</label>
+                            <input type="text" id="pdfPreferred" class="form-control bg-dark text-light border-secondary" placeholder="e.g. Goldwagen, Depo, Midas">
                         </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Find Alternatives</button>
+                        <div class="drop-zone mb-3" id="dropZone" onclick="document.getElementById('pdfInput').click()">
+                            <h4 class="fw-bold text-info mb-2">?? Click or Drag & Drop Audatex PDF Here</h4>
+                            <p class="text-secondary mb-0" id="fileLabel">Supports official Audatex estimate PDFs (.pdf)</p>
+                            <input type="file" id="pdfInput" name="pdf_file" accept=".pdf" class="d-none" required>
                         </div>
+                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">Parse & Audit Claim PDF</button>
                     </form>
                 </div>
-                <div id="resultsCard" class="card p-4 shadow-lg d-none">
-                    <h5 class="fw-bold mb-3">Supplier Options Found: <span id="oemLabel" class="text-info"></span></h5>
+
+                <div id="pdfResultCard" class="card p-4 shadow-lg d-none">
+                    <div id="pdfHeader" class="mb-3"></div>
                     <div class="table-responsive">
                         <table class="table table-custom mb-0">
                             <thead>
-                                <tr><th>Supplier SKU</th><th>Brand</th><th>Price (ZAR)</th><th>Scrape Hits</th><th>Last Verified</th></tr>
+                                <tr>
+                                    <th>#</th>
+                                    <th>OEM Part #</th>
+                                    <th>Description</th>
+                                    <th>Audatex Cap</th>
+                                    <th>Status</th>
+                                </tr>
                             </thead>
-                            <tbody id="resultsTable"></tbody>
+                            <tbody id="pdfTable"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 2: AUDATEX EVALUATOR -->
-            <div class="tab-pane fade" id="audatex-panel">
-                <div class="card p-4 mb-4 shadow-lg">
-                    <h5 class="fw-bold mb-3">Audatex Price Cap Evaluator</h5>
-                    <form id="audatexForm" class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">OEM Part #</label>
-                            <input type="text" id="audatexOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Part Description</label>
-                            <input type="text" id="audatexDesc" class="form-control bg-dark text-light border-secondary" value="Front Bumper Bracket / Mount" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Audatex Authorised Price (ZAR)</label>
-                            <input type="number" step="0.01" id="audatexPrice" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Preferred Supplier</label>
-                            <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" value="Goldwagen">
-                        </div>
-                        <div class="col-12 text-end">
-                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">Evaluate Price Cap</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- TAB 3: INVOICE RECONCILIATION -->
+            <!-- TAB: INVOICE RECONCILIATION -->
             <div class="tab-pane fade" id="reconcile-panel">
                 <div class="card p-4 mb-4 shadow-lg">
                     <h5 class="fw-bold mb-3">Reconcile Preferred Vendor Invoice vs Audatex Cap</h5>
-                    <p class="text-secondary small">Verify that the repairer's preferred vendor quote matches or beats the Audatex authorised allowance before closing the paperwork.</p>
                     <form id="reconcileForm" class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label text-secondary">OEM Part #</label>
@@ -131,9 +119,62 @@
                         </div>
                     </form>
                 </div>
-
                 <div id="reconcileResultCard" class="card p-4 shadow-lg d-none">
                     <div id="reconcileAlert"></div>
+                </div>
+            </div>
+
+            <!-- TAB: SEARCH -->
+            <div class="tab-pane fade" id="search-panel">
+                <div class="card p-4 mb-4 shadow-lg">
+                    <h5 class="fw-bold mb-3">Search Universal OEM Parts</h5>
+                    <form id="searchForm" class="row g-3">
+                        <div class="col-md-9">
+                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" value="A2058800100" placeholder="OEM Part Number" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Find Alternatives</button>
+                        </div>
+                    </form>
+                </div>
+                <div id="resultsCard" class="card p-4 shadow-lg d-none">
+                    <h5 class="fw-bold mb-3">Supplier Options Found: <span id="oemLabel" class="text-info"></span></h5>
+                    <div class="table-responsive">
+                        <table class="table table-custom mb-0">
+                            <thead>
+                                <tr><th>Supplier SKU</th><th>Brand</th><th>Price (ZAR)</th><th>Scrape Hits</th><th>Last Verified</th></tr>
+                            </thead>
+                            <tbody id="resultsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: AUDATEX EVALUATOR -->
+            <div class="tab-pane fade" id="audatex-panel">
+                <div class="card p-4 mb-4 shadow-lg">
+                    <h5 class="fw-bold mb-3">Audatex Price Cap Evaluator</h5>
+                    <form id="audatexForm" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">OEM Part #</label>
+                            <input type="text" id="audatexOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Part Description</label>
+                            <input type="text" id="audatexDesc" class="form-control bg-dark text-light border-secondary" value="Front Bumper Bracket / Mount" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Audatex Authorised Price (ZAR)</label>
+                            <input type="number" step="0.01" id="audatexPrice" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Preferred Supplier</label>
+                            <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" value="Goldwagen">
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">Evaluate Price Cap</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -141,7 +182,68 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // TAB 1 Search
+        // PDF Input Label Update
+        document.getElementById('pdfInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileLabel').textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            }
+        });
+
+        // PDF Upload Form
+        document.getElementById('pdfUploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            const fileInput = document.getElementById('pdfInput');
+            const prefInput = document.getElementById('pdfPreferred').value.trim();
+
+            if (!fileInput.files[0]) return;
+
+            formData.append('pdf_file', fileInput.files[0]);
+            if (prefInput) formData.append('preferredSupplier', prefInput);
+
+            const res = await fetch('/api/v1/claims/audatex/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const json = await res.json();
+
+            if (json.status === 'success') {
+                const data = json.data;
+                document.getElementById('pdfHeader').innerHTML = `
+                    <div class="alert alert-info bg-dark border-secondary text-light">
+                        <h5 class="fw-bold mb-1">Claim Ref: ${data.claimReference}</h5>
+                        <p class="mb-0">Total Line Items: <strong>${data.totalLineItems}</strong> | 
+                           Compliant Options: <span class="badge bg-success">${data.compliantItemsCount}</span> | 
+                           Over-Cap Risk: <span class="badge bg-danger">${data.overCapRiskItemsCount}</span>
+                        </p>
+                    </div>
+                `;
+
+                const tbody = document.getElementById('pdfTable');
+                tbody.innerHTML = '';
+                data.lineItems.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const evalRes = item.evaluationResult;
+                    tr.innerHTML = `
+                        <td>${item.lineNo}</td>
+                        <td><code>${item.oemPartNumber}</code></td>
+                        <td>${item.description}</td>
+                        <td>R ${parseFloat(item.authorizedPrice).toFixed(2)}</td>
+                        <td>
+                            <span class="badge ${evalRes.status === 'COMPLIANT_MATCH_AVAILABLE' ? 'badge-price-ok' : 'badge-price-over'}">
+                                ${evalRes.status === 'COMPLIANT_MATCH_AVAILABLE' ? '? Compliant Matches Found' : '?? Over Cap Risk'}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('pdfResultCard').classList.remove('d-none');
+            }
+        });
+
+        // Search Form
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const oem = document.getElementById('oemInput').value.trim();
@@ -164,7 +266,7 @@
             document.getElementById('resultsCard').classList.remove('d-none');
         });
 
-        // TAB 3 Reconciliation
+        // Reconciliation
         document.getElementById('reconcileForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const oem = document.getElementById('recOem').value.trim();
