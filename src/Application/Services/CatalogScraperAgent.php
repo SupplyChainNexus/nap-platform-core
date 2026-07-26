@@ -10,7 +10,7 @@ final class CatalogScraperAgent
 {
     private PartCrossReferenceRepository $repository;
 
-    /** @var array<string, array<string>> */
+    /** @var array<string, array<int, string>> */
     private array $oemTargets = [
         'A2058800100' => ['Mercedes-Benz', 'Bumper Bracket / Grille Support'],
         '34116858652' => ['BMW', 'Brake Disc Front Pair'],
@@ -21,7 +21,7 @@ final class CatalogScraperAgent
         '1883015'     => ['Ford', 'Front Brake Pad Kit']
     ];
 
-    /** @var array<string, array<string, float>> */
+    /** @var array<string, array{min: float, max: float}> */
     private array $knownAftermarketBrands = [
         'Bosch'         => ['min' => 450.00, 'max' => 4500.00],
         'Hella'         => ['min' => 600.00, 'max' => 4800.00],
@@ -49,21 +49,19 @@ final class CatalogScraperAgent
         $addedCount = 0;
 
         foreach ($this->oemTargets as $oemPart => $metadata) {
-            // Pick 2 to 4 brands dynamically per scrape cycle
-            $brands = array_rand($this->knownAftermarketBrands, rand(2, 4));
-            if (!is_array($brands)) {
-                $brands = [$brands];
-            }
+            $brandKeys = array_keys($this->knownAftermarketBrands);
+            /** @var array<int, int|string> $randomIndexes */
+            $randomIndexes = (array) array_rand($brandKeys, rand(2, 4));
 
-            foreach ($brands as $brandName) {
+            foreach ($randomIndexes as $idx) {
+                $brandName = $brandKeys[(int) $idx];
                 $scrapedCount++;
                 $pricing = $this->knownAftermarketBrands[$brandName];
-                $quotedPrice = round(rand((int)$pricing['min'], (int)$pricing['max']) + (rand(0, 99) / 100), 2);
+                $quotedPrice = round(rand((int) $pricing['min'], (int) $pricing['max']) + (rand(0, 99) / 100), 2);
                 
-                // Deterministic part number seed based on OEM & Brand
                 $supplierPartNum = 'ALT-' . strtoupper(substr(md5($oemPart . $brandName), 0, 8));
 
-                $this->repository->upsertCrossReference($oemPart, $supplierPartNum, $brandName, $quotedPrice);
+                $this->repository->saveAlternative($oemPart, $supplierPartNum, $brandName, $quotedPrice);
                 $addedCount++;
             }
         }
