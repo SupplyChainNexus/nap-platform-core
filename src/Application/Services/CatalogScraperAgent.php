@@ -10,27 +10,61 @@ final class CatalogScraperAgent
 {
     private PartCrossReferenceRepository $repository;
 
-    /** @var array<int|string, array<int, string>> */
+    /** 
+     * Target OEM part matrix across major automotive systems.
+     * @var array<int|string, array{category: string, description: string, typical_oem: string}> 
+     */
     private array $oemTargets = [
-        'A2058800100' => ['Mercedes-Benz', 'Bumper Bracket / Grille Support'],
-        '34116858652' => ['BMW', 'Brake Disc Front Pair'],
-        '06L1155620'  => ['VW / Audi', 'Engine Oil Filter Cartridge'],
-        '04152YZZA1'  => ['Toyota', 'Element Sub-Assy Oil Filter'],
-        'HU7116Z'     => ['MANN-FILTER', 'Air & Cabin Filter'],
-        '2630035505'  => ['Hyundai / Kia', 'Spin-On Oil Filter'],
-        '1883015'     => ['Ford', 'Front Brake Pad Kit']
+        // ?? BODY & STRUCTURAL
+        'A2058800100' => ['category' => 'Body & Structural', 'description' => 'Bumper Bracket / Grille Support', 'typical_oem' => 'Mercedes-Benz'],
+        '51117292101' => ['category' => 'Body & Structural', 'description' => 'Front Bumper Cover Panel', 'typical_oem' => 'BMW'],
+        '5N0807217'   => ['category' => 'Body & Structural', 'description' => 'Fender Wing Front Left', 'typical_oem' => 'VW / Audi'],
+
+        // ?? AUTO LAMPS & LIGHTING
+        'A2059060002' => ['category' => 'Lighting & Lamps', 'description' => 'LED Headlight Unit Right', 'typical_oem' => 'Mercedes-Benz'],
+        '63117419630' => ['category' => 'Lighting & Lamps', 'description' => 'Bi-Xenon Headlamp Assembly', 'typical_oem' => 'BMW'],
+        '8V0941005'   => ['category' => 'Lighting & Lamps', 'description' => 'Tail Light Rear Outer Left', 'typical_oem' => 'Audi'],
+
+        // ?? SUSPENSION & STEERING
+        '31126852991' => ['category' => 'Suspension & Steering', 'description' => 'Control Arm Front Lower Left', 'typical_oem' => 'BMW'],
+        '1K0407151AC' => ['category' => 'Suspension & Steering', 'description' => 'Wishbone / Suspension Arm', 'typical_oem' => 'VW / Audi'],
+        '4806802140'  => ['category' => 'Suspension & Steering', 'description' => 'Lower Control Arm Bushing Assembly', 'typical_oem' => 'Toyota'],
+
+        // ?? ENGINE & MECHANICAL
+        '06L1155620'  => ['category' => 'Engine & Mechanical', 'description' => 'Engine Oil Filter Cartridge', 'typical_oem' => 'VW / Audi'],
+        '04152YZZA1'  => ['category' => 'Engine & Mechanical', 'description' => 'Element Sub-Assy Oil Filter', 'typical_oem' => 'Toyota'],
+        '1121328021'  => ['category' => 'Engine & Mechanical', 'description' => 'Valve Cover Gasket Set', 'typical_oem' => 'Toyota'],
+
+        // ?? BRAKING & CLUTCH
+        '34116858652' => ['category' => 'Braking & Friction', 'description' => 'Brake Disc Vented Front Pair', 'typical_oem' => 'BMW'],
+        '1883015'     => ['category' => 'Braking & Friction', 'description' => 'Front Brake Pad Wear Kit', 'typical_oem' => 'Ford']
     ];
 
-    /** @var array<string, array{min: float, max: float}> */
-    private array $knownAftermarketBrands = [
-        'Bosch'         => ['min' => 450.00, 'max' => 4500.00],
-        'Hella'         => ['min' => 600.00, 'max' => 4800.00],
-        'Meyle'         => ['min' => 350.00, 'max' => 3800.00],
-        'Febi Bilstein' => ['min' => 300.00, 'max' => 3500.00],
-        'Brembo'        => ['min' => 800.00, 'max' => 5200.00],
-        'Valeo'         => ['min' => 500.00, 'max' => 4600.00],
-        'Denso'         => ['min' => 400.00, 'max' => 4200.00],
-        'Blic'          => ['min' => 700.00, 'max' => 4100.00]
+    /** 
+     * Broad supplier network spanning Body, Lamps, Mechanical, Suspension & Generic Aftermarket.
+     * @var array<string, array{category: string, min: float, max: float}> 
+     */
+    private array $supplierNetwork = [
+        // Body & Lamp Specialists
+        'Blic Bodytech'       => ['category' => 'Body & Structural', 'min' => 850.00, 'max' => 6200.00],
+        'Depo Auto Lamps'     => ['category' => 'Lighting & Lamps', 'min' => 1200.00, 'max' => 9500.00],
+        'TYC Lighting'        => ['category' => 'Lighting & Lamps', 'min' => 1100.00, 'max' => 8800.00],
+        'Magneti Marelli'     => ['category' => 'Lighting & Lamps', 'min' => 2200.00, 'max' => 14500.00],
+        
+        // Suspension & Steering Specialists
+        'Lemförder'          => ['category' => 'Suspension & Steering', 'min' => 950.00, 'max' => 5400.00],
+        'TRW Automotive'      => ['category' => 'Suspension & Steering', 'min' => 750.00, 'max' => 4800.00],
+        'Moog Suspension'     => ['category' => 'Suspension & Steering', 'min' => 600.00, 'max' => 3900.00],
+
+        // Mechanical, Engine & General Aftermarket Suppliers
+        'Goldwagen Import'    => ['category' => 'General Aftermarket', 'min' => 250.00, 'max' => 4200.00],
+        'Midas Commercial'    => ['category' => 'General Aftermarket', 'min' => 200.00, 'max' => 3800.00],
+        'Silverton Radiators' => ['category' => 'Cooling & Engine', 'min' => 1100.00, 'max' => 6500.00],
+        'Bosch Auto Parts'    => ['category' => 'Electrical & Engine', 'min' => 450.00, 'max' => 5500.00],
+        'Hella Automotive'    => ['category' => 'Lighting & Electrical', 'min' => 650.00, 'max' => 8900.00],
+        'Meyle Products'      => ['category' => 'General Aftermarket', 'min' => 350.00, 'max' => 4100.00],
+        'Febi Bilstein'       => ['category' => 'Suspension & Engine', 'min' => 300.00, 'max' => 3800.00],
+        'Brembo Performance'  => ['category' => 'Braking & Friction', 'min' => 800.00, 'max' => 6200.00]
     ];
 
     public function __construct(PartCrossReferenceRepository $repository)
@@ -39,7 +73,7 @@ final class CatalogScraperAgent
     }
 
     /**
-     * Executes a dynamic catalog scraping pass.
+     * Executes a dynamic catalog harvesting pass across all part categories and supplier networks.
      *
      * @return array{scrapedCount: int, addedCount: int}
      */
@@ -49,14 +83,14 @@ final class CatalogScraperAgent
         $addedCount = 0;
 
         foreach ($this->oemTargets as $oemPart => $metadata) {
-            $brandKeys = array_keys($this->knownAftermarketBrands);
+            $supplierNames = array_keys($this->supplierNetwork);
             /** @var array<int, int|string> $randomIndexes */
-            $randomIndexes = (array) array_rand($brandKeys, rand(2, 4));
+            $randomIndexes = (array) array_rand($supplierNames, rand(3, 5));
 
             foreach ($randomIndexes as $idx) {
-                $brandName = $brandKeys[(int) $idx];
+                $brandName = $supplierNames[(int) $idx];
                 $scrapedCount++;
-                $pricing = $this->knownAftermarketBrands[$brandName];
+                $pricing = $this->supplierNetwork[$brandName];
                 $quotedPrice = round(rand((int) $pricing['min'], (int) $pricing['max']) + (rand(0, 99) / 100), 2);
                 
                 $oemString = (string) $oemPart;

@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NAP Platform Core Operations</title>
+    <title>NAP Platform - Automotive OEM & Audatex Intelligence</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
         .card { background-color: #1e293b; border: 1px solid #334155; color: #f8fafc; }
         .badge-brand { background-color: #3b82f6; color: white; font-weight: 600; }
-        .badge-price { background-color: #10b981; color: white; font-weight: bold; }
+        .badge-price-ok { background-color: #10b981; color: white; font-weight: bold; }
+        .badge-price-over { background-color: #ef4444; color: white; font-weight: bold; }
         .table-custom { color: #e2e8f0; }
         .table-custom th { background-color: #0f172a; color: #94a3b8; border-color: #334155; }
         .table-custom td { border-color: #334155; vertical-align: middle; }
+        .nav-tabs .nav-link { color: #94a3b8; border: none; }
+        .nav-tabs .nav-link.active { background-color: #1e293b; color: #38bdf8; border-bottom: 3px solid #38bdf8; font-weight: bold; }
     </style>
 </head>
 <body class="py-5">
@@ -26,41 +29,99 @@
             <a href="/api/v1/agent/status" target="_blank" class="btn btn-outline-info btn-sm">?? View Worker Status</a>
         </div>
 
-        <div class="card p-4 mb-4 shadow-lg">
-            <h5 class="fw-bold mb-3">?? Search Part Cross-References</h5>
-            <form id="searchForm" class="row g-3">
-                <div class="col-md-9">
-                    <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" placeholder="Enter OEM Part Number (e.g. A2058800100, 34116858652)" value="A2058800100" required>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Find Alternatives</button>
-                </div>
-            </form>
-        </div>
+        <ul class="nav nav-tabs mb-4" id="mainTabs">
+            <li class="nav-item">
+                <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-panel">?? Universal OEM Cross-Reference</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="audatex-tab" data-bs-toggle="tab" data-bs-target="#audatex-panel">?? Audatex Claim Price Cap Evaluator</button>
+            </li>
+        </ul>
 
-        <div id="resultsCard" class="card p-4 shadow-lg d-none">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">Results for OEM: <span id="oemLabel" class="text-info"></span></h5>
-                <span id="matchBadge" class="badge bg-success fs-6"></span>
+        <div class="tab-content">
+            <!-- TAB 1: SEARCH CROSS REFERENCE -->
+            <div class="tab-pane fade show active" id="search-panel">
+                <div class="card p-4 mb-4 shadow-lg">
+                    <h5 class="fw-bold mb-3">Search Universal OEM Parts (Body, Suspension, Engine, Lamps)</h5>
+                    <form id="searchForm" class="row g-3">
+                        <div class="col-md-9">
+                            <input type="text" id="oemInput" class="form-control form-control-lg bg-dark text-light border-secondary" placeholder="Enter OEM Part # (e.g. A2058800100, A2059060002, 31126852991)" value="A2058800100" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Find Alternatives</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="resultsCard" class="card p-4 shadow-lg d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">Results for OEM: <span id="oemLabel" class="text-info"></span></h5>
+                        <span id="matchBadge" class="badge bg-success fs-6"></span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-custom mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Supplier Part #</th>
+                                    <th>Brand / Supplier</th>
+                                    <th>Quoted Price (ZAR)</th>
+                                    <th>Scrape Hits</th>
+                                    <th>Last Verified</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-custom mb-0">
-                    <thead>
-                        <tr>
-                            <th>Supplier Part #</th>
-                            <th>Brand</th>
-                            <th>Quoted Price (ZAR)</th>
-                            <th>Scrape Hits</th>
-                            <th>Last Verified</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultsTable"></tbody>
-                </table>
+
+            <!-- TAB 2: AUDATEX CLAIM EVALUATOR -->
+            <div class="tab-pane fade" id="audatex-panel">
+                <div class="card p-4 mb-4 shadow-lg">
+                    <h5 class="fw-bold mb-3">Evaluate Audatex Claim Item against Preferred Supplier Price Caps</h5>
+                    <form id="audatexForm" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-secondary">OEM Part Number</label>
+                            <input type="text" id="audatexOem" class="form-control bg-dark text-light border-secondary" value="A2058800100" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-secondary">Audatex Authorised Price (ZAR)</label>
+                            <input type="number" step="0.01" id="audatexPrice" class="form-control bg-dark text-light border-secondary" value="3500.00" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-secondary">Preferred Supplier (Optional)</label>
+                            <input type="text" id="audatexPreferred" class="form-control bg-dark text-light border-secondary" placeholder="e.g. Goldwagen, Blic, Hella">
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">Evaluate Claim Margin</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="audatexResultCard" class="card p-4 shadow-lg d-none">
+                    <div id="claimHeader" class="mb-3"></div>
+                    <div class="table-responsive">
+                        <table class="table table-custom mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Supplier / Brand</th>
+                                    <th>Supplier Part #</th>
+                                    <th>Quoted Price</th>
+                                    <th>Variance vs Authorised Cap</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audatexTable"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // TAB 1: Search Form
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const oem = document.getElementById('oemInput').value.trim();
@@ -80,7 +141,7 @@
                 tr.innerHTML = `
                     <td><code>${item.supplierPartNumber}</code></td>
                     <td><span class="badge badge-brand">${item.brandName}</span></td>
-                    <td><span class="badge badge-price">R ${parseFloat(item.lastQuotedPrice).toFixed(2)}</span></td>
+                    <td><span class="badge badge-price-ok">R ${parseFloat(item.lastQuotedPrice).toFixed(2)}</span></td>
                     <td>${item.occurrenceCount} passes</td>
                     <td class="text-secondary small">${new Date(item.updatedAt).toLocaleString()}</td>
                 `;
@@ -90,7 +151,62 @@
             document.getElementById('resultsCard').classList.remove('d-none');
         });
 
-        // Auto-search default part on load
+        // TAB 2: Audatex Claim Evaluator Form
+        document.getElementById('audatexForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oem = document.getElementById('audatexOem').value.trim();
+            const price = parseFloat(document.getElementById('audatexPrice').value);
+            const pref = document.getElementById('audatexPreferred').value.trim();
+
+            const res = await fetch(`/api/v1/parts/cross-reference?oem=${encodeURIComponent(oem)}`);
+            const json = await res.json();
+
+            const headerDiv = document.getElementById('claimHeader');
+            const tbody = document.getElementById('audatexTable');
+            tbody.innerHTML = '';
+
+            let compliantCount = 0;
+            let overCapCount = 0;
+
+            json.data.alternatives.forEach(item => {
+                const quotePrice = parseFloat(item.lastQuotedPrice);
+                const diff = quotePrice - price;
+                const isCompliant = quotePrice <= price;
+
+                if (isCompliant) compliantCount++;
+                else overCapCount++;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="badge badge-brand">${item.brandName}</span></td>
+                    <td><code>${item.supplierPartNumber}</code></td>
+                    <td>R ${quotePrice.toFixed(2)}</td>
+                    <td class="${diff <= 0 ? 'text-success' : 'text-danger'} fw-bold">
+                        ${diff <= 0 ? '-' : '+'}R ${Math.abs(diff).toFixed(2)}
+                    </td>
+                    <td>
+                        <span class="badge ${isCompliant ? 'badge-price-ok' : 'badge-price-over'}">
+                            ${isCompliant ? '? Within Cap (Approved)' : '?? Over Authorised Price'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            headerDiv.innerHTML = `
+                <div class="alert ${compliantCount > 0 ? 'alert-success' : 'alert-danger'} bg-dark border-secondary text-light">
+                    <h5 class="fw-bold mb-1">Audatex Claim Analysis for OEM: ${json.data.oemPartNumber}</h5>
+                    <p class="mb-0">Authorised Price Cap: <strong>R ${price.toFixed(2)}</strong> | 
+                       Compliant Options: <span class="badge bg-success">${compliantCount}</span> | 
+                       Over-Cap Options: <span class="badge bg-danger">${overCapCount}</span>
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('audatexResultCard').classList.remove('d-none');
+        });
+
+        // Auto-search default on page load
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('searchForm').dispatchEvent(new Event('submit'));
         });
